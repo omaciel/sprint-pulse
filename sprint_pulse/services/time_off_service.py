@@ -22,6 +22,8 @@ VALID_TYPES = ("pto", "holiday", "company", "partial", "tentative")
 # Type precedence for resolving a (member, day) that carried two types in source
 # data — higher wins. Used by the YAML import path (migrate.py); the unique
 # (member_id, date) constraint means live data never has a conflict.
+# NOTE: kept in sync by hand with engine._TYPE_PRIORITY (the engine layer can't
+# import the service layer). Update both together.
 TYPE_PRIORITY = {"company": 4, "holiday": 3, "pto": 2, "partial": 1, "tentative": 0}
 
 

@@ -129,15 +129,18 @@ def set_member_time_off(
 ):
     error = ""
     try:
-        if start and end:
-            s, e = date.fromisoformat(start), date.fromisoformat(end)
-            days = working_days(s, e) if e >= s else []
-            if not days:
-                raise ValidationError("end is before start", field="end")
-        elif date_:
-            days = [date.fromisoformat(date_)]
-        else:
-            raise ValidationError("a date is required", field="date")
+        try:
+            if start and end:
+                s, e = date.fromisoformat(start), date.fromisoformat(end)
+                days = working_days(s, e) if e >= s else []
+            elif date_:
+                days = [date.fromisoformat(date_)]
+            else:
+                raise ValidationError("a date is required", field="date")
+        except ValueError:
+            raise ValidationError("invalid date", field="date")
+        if not days:
+            raise ValidationError("end is before start", field="end")
         time_off_service.set_days(session, member_id, days, type, notes)
     except ValidationError as exc:
         session.rollback()
@@ -158,7 +161,7 @@ def clear_member_time_off(
     try:
         if date_:
             time_off_service.clear_days(session, member_id, [date.fromisoformat(date_)])
-    except ValidationError:
+    except (ValidationError, ValueError):
         session.rollback()
     return templates.TemplateResponse(
         request, "partials/_calendar.html", _calendar_context(session, member_id, month)
