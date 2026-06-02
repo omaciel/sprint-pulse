@@ -6,36 +6,24 @@
 <p class="subtitle">{{ sprint.start }} → {{ sprint.end }} · <span class="pill {{ sprint.jira_state }}">{{ sprint.jira_state }}</span></p>
 
 <div class="card">
-  <h2>Time off</h2>
-  <form hx-post="/sprints/{{ sprint.id }}/timeoff" hx-target="#timeoff" hx-swap="innerHTML"
-        hx-on::after-request="if(event.detail.successful) this.reset()">
-    <div class="row">
-      <div>
-        <label for="associate">Associate</label>
-        <select id="associate" name="associate" required>
-          <option value="__all__">Everyone (company-wide)</option>
-          {% for mem in members %}<option value="{{ mem.name }}">{{ mem.name }}</option>{% endfor %}
-        </select>
-      </div>
-      <div>
-        <label for="to_start">From</label>
-        <input type="date" id="to_start" name="start" value="{{ sprint.start }}" required>
-      </div>
-      <div>
-        <label for="to_end">To</label>
-        <input type="date" id="to_end" name="end" value="{{ sprint.start }}" required>
-      </div>
-      <div style="flex:2">
-        <label for="notes">Notes</label>
-        <input type="text" id="notes" name="notes" placeholder="PTO">
-      </div>
-      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
+  <h2>Dates</h2>
+  {% if date_error %}<p class="error">{{ date_error }}</p>{% endif %}
+  <form hx-post="/sprints/{{ sprint.id }}/dates" hx-target="body" hx-swap="outerHTML">
+    <div class="row" style="align-items:flex-end">
+      <div><label for="start">Start</label>
+        <input type="date" id="start" name="start" value="{{ sprint.start }}" required></div>
+      <div><label for="end">End</label>
+        <input type="date" id="end" name="end" value="{{ sprint.end }}" required></div>
+      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Save dates</button></div>
     </div>
-    <p class="field-hint">Notes drive the cell color: PTO / holiday / company / partial / tentative.</p>
+    <p class="field-hint">Changing the window re-derives who is out from member calendars.</p>
   </form>
-  <div id="timeoff" style="margin-top:16px">
-    {% include "partials/_timeoff.html" %}
-  </div>
+</div>
+
+<div class="card">
+  <h2>Out this sprint</h2>
+  <p class="field-hint">Read-only — edit time off on each member's page (Team → name).</p>
+  {% include "partials/_sprint_outage.html" %}
 </div>
 
 <div class="card">

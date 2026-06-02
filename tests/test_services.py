@@ -95,19 +95,6 @@ def test_add_event_rejects_unknown_kind(engine):
             spsvc.add_event(s, "2026-16", date(2026, 4, 17), "bogus", "X")
 
 
-def test_add_time_off_unknown_associate_suggests(engine):
-    with session_scope(engine) as s:
-        with pytest.raises(ValidationError) as ei:
-            spsvc.add_time_off(s, "2026-16", "Alice Andersen", [date(2026, 4, 17)], "PTO")
-    assert "did you mean" in (ei.value.suggestion or "")
-
-
-def test_add_time_off_rejects_out_of_range_day(engine):
-    with session_scope(engine) as s:
-        with pytest.raises(ValidationError):
-            spsvc.add_time_off(s, "2026-16", "Alice Anderson", [date(2026, 12, 25)], "PTO")
-
-
 def test_dashboard_hydration_reflects_member_day_off(engine):
     from sprint_pulse.services import time_off_service as tos
     with session_scope(engine) as s:
