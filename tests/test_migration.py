@@ -121,6 +121,11 @@ def test_legacy_timeoff_is_flattened_and_dropped():
     assert [r.date for r in rows] == [date(2026, 4, 20), date(2026, 4, 21)]
     assert rows[0].type == "holiday"          # priority: holiday > pto
     assert rows[0].notes == "Holiday"
-    tables = {t for (t,) in eng.connect().exec_driver_sql(
-        "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    with eng.connect() as conn:
+        tables = {t for (t,) in conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     assert "timeoff" not in tables and "timeoffday" not in tables
+
+    create_db_and_tables(eng)  # second call must be a harmless no-op
+    with Session(eng) as s:
+        assert len(s.exec(select(m.MemberDayOff)).all()) == 2

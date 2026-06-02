@@ -131,6 +131,7 @@ def _migrate_legacy_timeoff(engine: Engine, *, pre_existing: set[str]) -> None:
             key = (member_id, dt)
             cur = best.get(key)
             if cur is None or _TYPE_PRIORITY.get(type_, 0) > _TYPE_PRIORITY.get(cur[0], 0):
+                # Winner takes its own type; keep any existing note if it has none.
                 best[key] = (type_, notes or (cur[1] if cur else ""))
             elif not cur[1] and notes:
                 best[key] = (cur[0], notes)
