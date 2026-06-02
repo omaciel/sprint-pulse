@@ -32,6 +32,42 @@ tentative) and click weekdays to mark or clear them. Sprints derive their own
 "who's out" list automatically from those dates, so editing a sprint is just its
 dates and release events.
 
+## Screenshots
+
+> Captured from `make demo-desktop` — the native desktop window with fictional
+> sample data (no Jira or credentials required).
+
+**Dashboard** — one sprint's availability heatmap: team members × working days,
+colored time-off cells (PTO / holiday / company / partial / tentative), the
+release-event row, the per-sprint availability %, and a sidebar with the sprint
+navigator and legend.
+
+![Sprint Pulse dashboard — a sprint availability heatmap with legend and sprint navigator](docs/images/dashboard.png)
+
+**First-run setup** — a guided wizard (app settings → Jira connection → team
+roster), or import an existing `data/*.yaml` roster, sprints, and time off in one
+click.
+
+![Sprint Pulse first-run welcome screen with guided setup and YAML import](docs/images/welcome.png)
+
+**Team** — manage the roster, toggle **Orchestration** (always shown gray and
+excluded from capacity), and click any name to open that member's availability
+calendar.
+
+![Sprint Pulse Team page showing the roster with orchestration toggles](docs/images/team.png)
+
+**Sprints** — import sprints from Jira or add them manually; each row shows its
+dates, Jira state, and cached ticket / story-point metrics. Archive a sprint to
+drop it off the dashboard without deleting it.
+
+![Sprint Pulse Sprints page listing sprints with dates, state, and metrics](docs/images/sprints.png)
+
+**Schedule** — refresh Jira metrics automatically on an interval or cron
+expression, or hit **Refresh metrics now** on demand; the last-run status shows
+what was updated.
+
+![Sprint Pulse Schedule page with refresh cadence and run-now controls](docs/images/schedule.png)
+
 ## Requirements
 
 - **Python 3.13+**
