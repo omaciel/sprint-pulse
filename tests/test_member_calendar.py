@@ -74,3 +74,14 @@ def test_invalid_month_falls_back_without_500(client):
         r = client.get(f"/members/{mid}?month={bad}")
         assert r.status_code == 200
         assert 'id="calendar"' in r.text
+
+
+def test_malformed_date_post_does_not_500(client):
+    mid = _alice_id(client)
+    r = client.post(f"/members/{mid}/timeoff",
+                    data={"date": "not-a-date", "type": "pto", "notes": "", "month": "2026-07"})
+    assert r.status_code == 200
+    assert "invalid date" in r.text
+    r2 = client.post(f"/members/{mid}/timeoff/clear",
+                     data={"date": "not-a-date", "month": "2026-07"})
+    assert r2.status_code == 200  # clear is best-effort, no 500

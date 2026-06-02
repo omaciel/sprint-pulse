@@ -106,6 +106,8 @@ def _ensure_columns(engine: Engine) -> None:
 
 
 # Higher wins when the same (member, day) carried two types in legacy data.
+# NOTE: mirrors time_off_service.TYPE_PRIORITY (kept in sync by hand; the engine
+# layer can't import the service layer). Update both together.
 _TYPE_PRIORITY = {"company": 4, "holiday": 3, "pto": 2, "partial": 1, "tentative": 0}
 
 
