@@ -66,3 +66,11 @@ def test_weekend_paint_is_rejected_gracefully(client):
 def test_roster_links_to_member_page(client):
     r = client.get("/members")
     assert f'href="/members/{_alice_id(client)}"' in r.text
+
+
+def test_invalid_month_falls_back_without_500(client):
+    mid = _alice_id(client)
+    for bad in ("2026-13", "2026-00", "abc", "2026"):
+        r = client.get(f"/members/{mid}?month={bad}")
+        assert r.status_code == 200
+        assert 'id="calendar"' in r.text
