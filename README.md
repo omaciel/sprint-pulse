@@ -26,6 +26,12 @@ you control.
 - Release-event row (git tags, Go/No-Go, GA, freeze, testathon)
 - Per-sprint availability % and a per-associate summary
 
+Time off is managed **per person**: open **Team → a name** for that member's
+availability **calendar** — pick a type (PTO / holiday / company / partial /
+tentative) and click weekdays to mark or clear them. Sprints derive their own
+"who's out" list automatically from those dates, so editing a sprint is just its
+dates and release events.
+
 ## Requirements
 
 - **Python 3.13+**
