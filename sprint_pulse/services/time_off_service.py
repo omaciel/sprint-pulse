@@ -8,6 +8,7 @@ sprints derive their outage by date overlap.
 from __future__ import annotations
 
 import calendar as _cal
+from collections.abc import Iterable, Sequence
 from datetime import date
 
 from sqlmodel import Session, select
@@ -18,7 +19,9 @@ from sprint_pulse.render import TYPE_LETTERS
 from sprint_pulse.sprints import TimeOffEntry, weekday_error
 
 VALID_TYPES = ("pto", "holiday", "company", "partial", "tentative")
-# Higher wins when grouping/merging conflicting days.
+# Type precedence for resolving a (member, day) that carried two types in source
+# data — higher wins. Used by the YAML import path (migrate.py); the unique
+# (member_id, date) constraint means live data never has a conflict.
 TYPE_PRIORITY = {"company": 4, "holiday": 3, "pto": 2, "partial": 1, "tentative": 0}
 
 
@@ -29,7 +32,7 @@ def _require_member(session: Session, member_id: int) -> m.TeamMember:
     return member
 
 
-def set_days(session: Session, member_id: int, dates, type_: str, notes: str = "") -> None:
+def set_days(session: Session, member_id: int, dates: Iterable[date], type_: str, notes: str = "") -> None:
     """Upsert one MemberDayOff per date (replacing type/notes if present)."""
     _require_member(session, member_id)
     if type_ not in VALID_TYPES:
@@ -57,7 +60,8 @@ def set_days(session: Session, member_id: int, dates, type_: str, notes: str = "
             session.add(row)
 
 
-def clear_days(session: Session, member_id: int, dates) -> None:
+def clear_days(session: Session, member_id: int, dates: Iterable[date]) -> None:
+    _require_member(session, member_id)
     for d in dates:
         row = session.exec(
             select(m.MemberDayOff).where(
@@ -82,7 +86,7 @@ def member_calendar(session: Session, member_id: int, year: int, month: int) -> 
     return {r.date: (r.type, r.notes) for r in rows}
 
 
-def _entries_from_rows(rows, member_name: dict) -> list[TimeOffEntry]:
+def _entries_from_rows(rows: Sequence[m.MemberDayOff], member_name: dict[int, str]) -> list[TimeOffEntry]:
     """Group MemberDayOff rows into TimeOffEntry objects per (member, type, notes)."""
     by_kind: dict[tuple, list[date]] = {}
     for r in rows:
