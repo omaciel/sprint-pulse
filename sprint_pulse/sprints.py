@@ -91,10 +91,18 @@ def _suggest(name: str, roster: list[str]) -> str:
 # and the DB service layer (sprint_pulse.services.sprint_service) call them, so
 # the two paths can never drift. Each returns an error message, or None if OK.
 
-def working_day_error(d: date, start: date, end: date) -> str | None:
-    """Why ``d`` is not a valid working day inside ``[start, end]`` (or None)."""
+def weekday_error(d: date) -> str | None:
+    """Why ``d`` is not a Mon–Fri working day (or None)."""
     if d.weekday() >= 5:
         return f"{d.isoformat()} is a {_WEEKDAY_NAMES[d.weekday()]}"
+    return None
+
+
+def working_day_error(d: date, start: date, end: date) -> str | None:
+    """Why ``d`` is not a valid working day inside ``[start, end]`` (or None)."""
+    err = weekday_error(d)
+    if err:
+        return err
     if not (start <= d <= end):
         return (
             f"{d.isoformat()} is outside sprint range "
