@@ -159,6 +159,11 @@ def set_sprint_dates(session: Session, sprint_id: str, start: date, end: date) -
         raise ValidationError(
             f"end ({end.isoformat()}) is before start ({start.isoformat()})", field="end"
         )
+    if (end - start).days + 1 != 14:
+        warnings.warn(
+            f"sprint {sprint_id}: length is {(end - start).days + 1} days (expected 14)",
+            stacklevel=2,
+        )
     sprint.start = start
     sprint.end = end
     session.add(sprint)

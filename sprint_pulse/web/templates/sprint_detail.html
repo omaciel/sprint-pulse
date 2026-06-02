@@ -8,7 +8,7 @@
 <div class="card">
   <h2>Dates</h2>
   {% if date_error %}<p class="error">{{ date_error }}</p>{% endif %}
-  <form hx-post="/sprints/{{ sprint.id }}/dates" hx-target="body" hx-swap="outerHTML">
+  <form method="post" action="/sprints/{{ sprint.id }}/dates">
     <div class="row" style="align-items:flex-end">
       <div><label for="start">Start</label>
         <input type="date" id="start" name="start" value="{{ sprint.start }}" required></div>
