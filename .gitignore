@@ -30,6 +30,9 @@ venv/
 # Pytest
 .pytest_cache/
 
+# Brainstorming scratch (visual companion mockups)
+.superpowers/
+
 # PyInstaller build artifacts
 build/
 dist/
