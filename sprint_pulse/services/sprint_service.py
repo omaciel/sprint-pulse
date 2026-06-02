@@ -1,8 +1,8 @@
 """Sprint/event/time-off reads + validated mutators over the DB.
 
 Validation reuses the shared field validators in ``sprint_pulse.sprints``
-(``working_day_error``, ``event_kind_error``, ``infer_type``, ``_suggest``) so
-the DB path enforces exactly the same rules the YAML loader always did.
+(``working_day_error``, ``event_kind_error``) so the DB path enforces exactly
+the same rules the YAML loader always did.
 """
 from __future__ import annotations
 
@@ -20,13 +20,9 @@ from sprint_pulse.services import config_service, jira_service, time_off_service
 from sprint_pulse.sprints import (
     Event,
     Sprint,
-    _suggest,
     event_kind_error,
-    infer_type,
     working_day_error,
 )
-
-_ALL = "__all__"
 
 
 def sort_key(sprint) -> tuple:
@@ -153,6 +149,18 @@ def delete_sprint(session: Session, sprint_id: str) -> None:
 def set_archived(session: Session, sprint_id: str, archived: bool) -> m.Sprint:
     sprint = _get_sprint(session, sprint_id)
     sprint.archived = archived
+    session.add(sprint)
+    return sprint
+
+
+def set_sprint_dates(session: Session, sprint_id: str, start: date, end: date) -> m.Sprint:
+    sprint = _get_sprint(session, sprint_id)
+    if end < start:
+        raise ValidationError(
+            f"end ({end.isoformat()}) is before start ({start.isoformat()})", field="end"
+        )
+    sprint.start = start
+    sprint.end = end
     session.add(sprint)
     return sprint
 
@@ -287,60 +295,3 @@ def delete_event(session: Session, event_id: int) -> None:
     session.delete(event)
 
 
-# --- Time-off CRUD ----------------------------------------------------------
-
-def add_time_off(
-    session: Session,
-    sprint_id: str,
-    associate: str,
-    days: list[date],
-    notes: str = "",
-) -> list[m.TimeOff]:
-    """Add a time-off entry. ``associate`` may be ``__all__`` (expands to every
-    member). One :class:`m.TimeOff` row is created per resulting member."""
-    sprint = _get_sprint(session, sprint_id)
-    if not days:
-        raise ValidationError("at least one day is required", field="days")
-    for d in days:
-        day_err = working_day_error(d, sprint.start, sprint.end)
-        if day_err:
-            raise ValidationError(day_err, field="days")
-
-    members = config_service.list_members(session)
-    by_name = {member.name: member for member in members}
-
-    if associate == _ALL:
-        targets = members
-    else:
-        member = by_name.get(associate)
-        if member is None:
-            raise ValidationError(
-                f'unknown associate "{associate}"',
-                field="associate",
-                suggestion=_suggest(associate, list(by_name)),
-            )
-        targets = [member]
-
-    type_ = infer_type(notes or "")
-    created: list[m.TimeOff] = []
-    for member in targets:
-        entry = m.TimeOff(
-            sprint_id=sprint_id, member_id=member.id, notes=notes or "", type=type_
-        )
-        session.add(entry)
-        session.flush()
-        for d in days:
-            session.add(m.TimeOffDay(time_off_id=entry.id, date=d))
-        created.append(entry)
-    return created
-
-
-def delete_time_off(session: Session, time_off_id: int) -> None:
-    entry = session.get(m.TimeOff, time_off_id)
-    if entry is None:
-        raise ValidationError(f"no time-off entry with id {time_off_id}")
-    for day in session.exec(
-        select(m.TimeOffDay).where(m.TimeOffDay.time_off_id == time_off_id)
-    ).all():
-        session.delete(day)
-    session.delete(entry)

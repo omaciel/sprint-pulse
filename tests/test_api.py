@@ -92,34 +92,6 @@ def test_sprint_detail_renders(seeded_client):
     assert "Sprint 2026-16" in r.text
 
 
-def test_add_time_off_invalid_day_shows_error(seeded_client):
-    r = seeded_client.post(
-        "/sprints/2026-16/timeoff",
-        data={
-            "associate": "Alice Anderson",
-            "start": "2026-12-25",
-            "end": "2026-12-25",
-            "notes": "PTO",
-        },
-    )
-    assert r.status_code == 200
-    assert "outside sprint range" in r.text
-
-
-def test_add_time_off_unknown_associate_suggests(seeded_client):
-    r = seeded_client.post(
-        "/sprints/2026-16/timeoff",
-        data={
-            "associate": "Alice Andersen",
-            "start": "2026-04-17",
-            "end": "2026-04-17",
-            "notes": "PTO",
-        },
-    )
-    assert r.status_code == 200
-    assert "did you mean" in r.text
-
-
 def test_add_event_then_appears(seeded_client):
     r = seeded_client.post(
         "/sprints/2026-16/events",
@@ -158,3 +130,28 @@ def test_run_now_without_jira_returns_error_status(empty_client):
     assert r.status_code == 200
     assert 'pill error' in r.text         # error pill rendered
     assert "not" in r.text.lower()        # "...not configured"
+
+
+def test_edit_sprint_dates_rederives_outage(seeded_client):
+    from datetime import date
+    from sprint_pulse.db.engine import session_scope
+    from sprint_pulse.services import config_service as cfgsvc
+    from sprint_pulse.services import time_off_service as tos
+
+    eng = seeded_client.app.state.engine
+    with session_scope(eng) as s:
+        alice = next(m for m in cfgsvc.list_members(s) if m.name == "Alice Anderson")
+        tos.set_days(s, alice.id, [date(2026, 5, 5)], "pto", "PTO")  # outside 2026-16
+    # Move the sprint window to cover May 5.
+    r = seeded_client.post("/sprints/2026-16/dates",
+                           data={"start": "2026-05-04", "end": "2026-05-15"})
+    assert r.status_code in (200, 303)
+    detail = seeded_client.get("/sprints/2026-16").text
+    assert "Alice Anderson" in detail  # now appears in the derived outage list
+
+
+def test_sprint_timeoff_routes_are_gone(seeded_client):
+    r = seeded_client.post("/sprints/2026-16/timeoff",
+                           data={"associate": "Alice Anderson", "start": "2026-04-20",
+                                 "end": "2026-04-20", "notes": "PTO"})
+    assert r.status_code == 404

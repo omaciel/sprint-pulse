@@ -9,8 +9,8 @@ from sqlmodel import Session, select
 
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.services import config_service, sprint_service
-from sprint_pulse.sprints import EVENT_KINDS, working_days
+from sprint_pulse.services import config_service, sprint_service, time_off_service
+from sprint_pulse.sprints import EVENT_KINDS
 from sprint_pulse.web.deps import get_session, templates
 
 router = APIRouter()
@@ -160,37 +160,27 @@ def delete_sprint(sprint_id: str, session: Session = Depends(get_session)):
     return RedirectResponse("/sprints", status_code=303)
 
 
-def _detail_context(session: Session, sprint_id: str, *, event_error="", timeoff_error=""):
+def _detail_context(session: Session, sprint_id: str, *, event_error="", date_error=""):
     sprint = session.get(m.Sprint, sprint_id)
     events = session.exec(
         select(m.Event).where(m.Event.sprint_id == sprint_id).order_by(m.Event.date)
     ).all()
-    time_off = session.exec(
-        select(m.TimeOff).where(m.TimeOff.sprint_id == sprint_id)
-    ).all()
-    members = config_service.list_members(session)
-    member_name = {mem.id: mem.name for mem in members}
-    # One query for all this sprint's time-off days, grouped in Python.
-    entry_ids = [t.id for t in time_off]
-    days_by_entry: dict[int, list] = {tid: [] for tid in entry_ids}
-    if entry_ids:
-        for d in session.exec(
-            select(m.TimeOffDay).where(m.TimeOffDay.time_off_id.in_(entry_ids))
-        ).all():
-            days_by_entry.setdefault(d.time_off_id, []).append(d.date)
-        for tid in days_by_entry:
-            days_by_entry[tid].sort()
+    member_name = {mem.id: mem.name for mem in config_service.list_members(session)}
+    outage = []
+    if sprint is not None:
+        outage = sorted(
+            time_off_service.outage_entries(session, sprint.start, sprint.end, member_name),
+            key=lambda e: (e.associate, e.days[0]),
+        )
     return {
         "active": "/sprints",
         "sprint": sprint,
         "events": events,
         "event_kinds": EVENT_KINDS,
-        "time_off": time_off,
-        "member_name": member_name,
-        "members": members,
-        "days_by_entry": days_by_entry,
+        "outage": outage,
+        "member_id_by_name": {name: mid for mid, name in member_name.items()},
         "event_error": event_error,
-        "timeoff_error": timeoff_error,
+        "date_error": date_error,
     }
 
 
@@ -200,6 +190,25 @@ def sprint_detail(request: Request, sprint_id: str, session: Session = Depends(g
         return RedirectResponse("/sprints", status_code=303)
     return templates.TemplateResponse(
         request, "sprint_detail.html", _detail_context(session, sprint_id)
+    )
+
+
+@router.post("/sprints/{sprint_id}/dates", response_class=HTMLResponse)
+def set_dates(
+    request: Request,
+    sprint_id: str,
+    start: date = Form(...),
+    end: date = Form(...),
+    session: Session = Depends(get_session),
+):
+    error = ""
+    try:
+        sprint_service.set_sprint_dates(session, sprint_id, start, end)
+    except ValidationError as e:
+        session.rollback()
+        error = e.display()
+    return templates.TemplateResponse(
+        request, "sprint_detail.html", _detail_context(session, sprint_id, date_error=error)
     )
 
 
@@ -236,40 +245,3 @@ def delete_event(request: Request, sprint_id: str, event_id: int, session: Sessi
     )
 
 
-@router.post("/sprints/{sprint_id}/timeoff", response_class=HTMLResponse)
-def add_time_off(
-    request: Request,
-    sprint_id: str,
-    associate: str = Form(...),
-    start: date = Form(...),
-    end: date = Form(...),
-    notes: str = Form(""),
-    session: Session = Depends(get_session),
-):
-    error = ""
-    # Expand the [start, end] range to working days, then let the service
-    # validate each against the sprint window.
-    days = working_days(start, end) if end >= start else []
-    try:
-        if not days:
-            raise ValidationError("end is before start", field="end")
-        sprint_service.add_time_off(session, sprint_id, associate, days, notes)
-    except ValidationError as e:
-        session.rollback()
-        error = e.display()
-    return templates.TemplateResponse(
-        request,
-        "partials/_timeoff.html",
-        _detail_context(session, sprint_id, timeoff_error=error),
-    )
-
-
-@router.post("/sprints/{sprint_id}/timeoff/{time_off_id}/delete", response_class=HTMLResponse)
-def delete_time_off(request: Request, sprint_id: str, time_off_id: int, session: Session = Depends(get_session)):
-    try:
-        sprint_service.delete_time_off(session, time_off_id)
-    except ValidationError:
-        session.rollback()
-    return templates.TemplateResponse(
-        request, "partials/_timeoff.html", _detail_context(session, sprint_id)
-    )

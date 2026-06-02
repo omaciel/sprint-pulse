@@ -1,0 +1,16 @@
+{% if outage %}
+<table class="grid">
+  <thead><tr><th>Associate</th><th>Days</th><th>Type</th></tr></thead>
+  <tbody>
+    {% for e in outage %}
+    <tr>
+      <td><a class="link" href="/members/{{ member_id_by_name[e.associate] }}">{{ e.associate }}</a></td>
+      <td>{{ e.days[0] }}{% if e.days|length > 1 %} → {{ e.days[-1] }}{% endif %} ({{ e.days|length }}d)</td>
+      <td><span class="pill {{ e.type }}">{{ e.type }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No one is out during this sprint.</p>
+{% endif %}
