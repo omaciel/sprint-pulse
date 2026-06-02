@@ -146,7 +146,7 @@ def set_member_time_off(
         session.rollback()
         error = exc.display()
     return templates.TemplateResponse(
-        request, "partials/_calendar.html", _calendar_context(session, member_id, month, error=error)
+        request, "partials/_calendar_edit.html", _calendar_context(session, member_id, month, error=error)
     )
 
 
@@ -164,5 +164,5 @@ def clear_member_time_off(
     except (ValidationError, ValueError):
         session.rollback()
     return templates.TemplateResponse(
-        request, "partials/_calendar.html", _calendar_context(session, member_id, month)
+        request, "partials/_calendar_edit.html", _calendar_context(session, member_id, month)
     )

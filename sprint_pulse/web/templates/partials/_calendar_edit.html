@@ -1,0 +1,6 @@
+{# Response for a day-off edit: swap the calendar (main target) AND refresh the
+   sidebar summary out-of-band so the days-off stat + Upcoming stay live. #}
+{% include "partials/_calendar.html" %}
+<div id="member-summary" hx-swap-oob="innerHTML">
+{% include "partials/_member_summary.html" %}
+</div>

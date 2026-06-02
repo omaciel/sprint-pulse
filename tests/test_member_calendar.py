@@ -85,3 +85,19 @@ def test_malformed_date_post_does_not_500(client):
     r2 = client.post(f"/members/{mid}/timeoff/clear",
                      data={"date": "not-a-date", "month": "2026-07"})
     assert r2.status_code == 200  # clear is best-effort, no 500
+
+
+def test_edit_refreshes_sidebar_summary(client):
+    # Painting/clearing a day must also refresh the sidebar (days-off stat +
+    # Upcoming), delivered as an out-of-band swap so it updates live.
+    mid = _alice_id(client)
+    r = client.post(f"/members/{mid}/timeoff",
+                    data={"date": "2026-07-20", "type": "pto", "notes": "", "month": "2026-07"})
+    assert r.status_code == 200
+    assert 'id="member-summary"' in r.text
+    assert "hx-swap-oob" in r.text
+    assert "days off" in r.text  # the stat card rides along in the refreshed sidebar
+    r2 = client.post(f"/members/{mid}/timeoff/clear",
+                     data={"date": "2026-07-20", "month": "2026-07"})
+    assert r2.status_code == 200
+    assert 'id="member-summary"' in r2.text and "hx-swap-oob" in r2.text
