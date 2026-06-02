@@ -1,5 +1,8 @@
 # Sprint Pulse ⚡
 
+[![tests](https://github.com/omaciel/sprint-pulse/actions/workflows/test.yml/badge.svg)](https://github.com/omaciel/sprint-pulse/actions/workflows/test.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A team availability dashboard you can **install**. Sprint Pulse combines team
 time-off tracking, live Jira sprint metrics (tickets done/total, story points
 done/total), and release-calendar events into a single availability heatmap.
@@ -159,16 +162,19 @@ make db-path
 
 ## Importing existing YAML
 
-If you already have `data/config.yaml` + `data/sprints/*.yaml`, import them once:
+Have a `config.yaml` + `sprints/*.yaml` directory (the bundled `examples/`, or your
+own)? Import it once:
 
 ```bash
-make migrate                                  # into the default DB location
-python migrate_yaml_to_sqlite.py --db /tmp/x.db   # or a specific file
-python migrate_yaml_to_sqlite.py --force          # overwrite a populated DB
-# …or click "Import from YAML" in the first-run wizard
+python migrate_yaml_to_sqlite.py --data examples            # import the samples
+python migrate_yaml_to_sqlite.py --data /path/to/mine       # your own dir
+python migrate_yaml_to_sqlite.py --data examples --db /tmp/x.db   # to a specific DB
+python migrate_yaml_to_sqlite.py --data examples --force    # overwrite a populated DB
+# …or click "Import from YAML" in the first-run wizard (set SPRINT_PULSE_SEED_DIR)
 ```
 
-After import, SQLite is the source of truth — the YAML is no longer edited.
+After import, SQLite is the source of truth — the YAML is no longer edited. Your own
+team data is yours to keep outside the repo; only the fictional `examples/` ship here.
 
 ## Environment variables
 
@@ -198,7 +204,6 @@ sprint-pulse/
 ├── migrate_yaml_to_sqlite.py   # one-time YAML → SQLite import
 ├── Containerfile               # browser deployment
 ├── packaging/sprint_pulse.spec # desktop bundle (PyInstaller)
-├── data/                       # legacy YAML — import source only
 ├── examples/                   # fictional sample data for demos (make demo)
 ├── tests/                      # pytest suite
 └── .claude/skills/             # maintain-time-off-report, refresh-sprint-metrics

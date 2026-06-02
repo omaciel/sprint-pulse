@@ -1,4 +1,5 @@
 """Setup wizard flow + YAML import path."""
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -124,9 +125,12 @@ def test_team_step_back_link_only_without_sprints(client):
     assert "Back to import sprints" not in client.get("/setup/team").text
 
 
-def test_yaml_import_populates_db(client):
+def test_yaml_import_populates_db(client, monkeypatch):
+    # Point the wizard's "Import from YAML" at the bundled examples/.
+    examples = Path(__file__).resolve().parents[1] / "examples"
+    monkeypatch.setenv("SPRINT_PULSE_SEED_DIR", str(examples))
     r = client.post("/setup/import", follow_redirects=False)
     assert r.status_code == 303
     assert r.headers["location"] == "/"
-    # dashboard now renders (the bundled data has sprints)
-    assert "Wisdom Team" in client.get("/").text
+    # dashboard now renders (the example data has sprints)
+    assert "Demo Team" in client.get("/").text

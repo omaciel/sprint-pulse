@@ -18,8 +18,8 @@ heatmap. 100% Python — no Rust/Node.
   and the APScheduler wrapper (`scheduler.py`).
 - **`sprint_pulse/desktop.py`** — pywebview shell (runs the app in a thread, opens a window).
 - **`sprint_pulse/{config,sprints,jira,render}.py`** — the original domain core, reused.
-- **`migrate_yaml_to_sqlite.py`** + **`data/*.yaml`** — one-time import only (the YAML is
-  no longer edited day to day).
+- **`migrate_yaml_to_sqlite.py`** + **`examples/*.yaml`** — a one-time YAML→SQLite
+  importer and fictional sample data. (Real operator data lives outside the repo.)
 - **`Containerfile`** — browser deployment. **`packaging/sprint_pulse.spec`** — desktop bundle.
 
 ## Default workflow
@@ -44,11 +44,11 @@ Two project-scoped skills live in `.claude/skills/` — invoke via the `Skill` t
 
 ## Constraints worth remembering
 
-- **SQLite is the source of truth.** The `data/*.yaml` files are import-only; editing them
-  has no effect on a running install. Don't hand-edit generated output.
-- Members flagged as **Orchestration** (listed under `orchestration:` in `data/config.yaml`,
-  or toggled on the Team page) render gray (`external`) regardless of PTO/holiday and are
-  excluded from capacity (currently 2 of 11 → `9 × 10 = 90`).
+- **SQLite is the source of truth.** YAML (`examples/`, or your own dir) is import-only;
+  editing it has no effect on a running install. Don't hand-edit generated output.
+- Members flagged as **Orchestration** (toggled on the Team page, or the `orchestration:`
+  list when importing YAML) render gray (`external`) regardless of PTO/holiday and are
+  excluded from capacity.
 - The `notes` field on a time-off entry drives cell color via keyword matching; empty notes
   default to PTO. Split multi-type absences into separate entries.
 - Release events use a closed-vocabulary `kind` (`tags`/`gono`/`ga`/`freeze`/`test`); sprint
@@ -62,7 +62,7 @@ Two project-scoped skills live in `.claude/skills/` — invoke via the `Skill` t
 
 ## When asked about availability math
 
-Capacity = `(len(roster) − len(orchestration)) × working_days_per_sprint` = `(11 − 2) × 10 = 90`
-person-days per sprint (values come from the DB Settings + roster).
-Days Out = sum of absent cells from the 9 effective members.
-Availability = `(Capacity − Days Out) / Capacity × 100`, one decimal.
+Capacity = `(len(roster) − len(orchestration)) × working_days_per_sprint` person-days per
+sprint (values come from the DB Settings + roster).
+Days Out = sum of absent cells from the effective (non-orchestration) members.
+Availability = `(Capacity − Days Out) / Capacity × 100`, one decimal (n/a when capacity is 0).

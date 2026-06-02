@@ -1,5 +1,5 @@
 .PHONY: help install install-dev test test-update lint migrate db-path dev dev-desktop \
-        demo demo-desktop build-desktop container-build container-run report clean
+        demo demo-desktop build-desktop container-build container-run clean
 
 # Use the project venv automatically if it exists; else fall back to python3.
 # Override explicitly with `make <target> PYTHON=/path/to/python`.
@@ -61,10 +61,6 @@ container-run:  ## Run the container (browser at localhost:$(PORT))
 	podman run --rm -p $(PORT):8765 -v sprint-pulse-data:/data \
 		-e JIRA_USERNAME="$$JIRA_USERNAME" -e JIRA_API_TOKEN="$$JIRA_API_TOKEN" $(IMAGE)
 
-report:  ## Legacy static HTML export from the YAML files (build_report.py)
-	$(PYTHON) build_report.py
-
 clean:  ## Remove caches and build artifacts
-	rm -rf .pytest_cache build dist
+	rm -rf .pytest_cache build dist .demo.db
 	find . -type d -name __pycache__ -exec rm -rf {} +
-	rm -f output/report.html output/report.html.golden

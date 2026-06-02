@@ -1,4 +1,4 @@
-"""Smoke test: load every YAML file under data/ and assert success."""
+"""Smoke test: load every example YAML file and assert success."""
 from pathlib import Path
 
 
@@ -7,7 +7,7 @@ from sprint_pulse.sprints import load_sprints
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = PROJECT_ROOT / "examples"
 
 
 def test_real_config_loads() -> None:
