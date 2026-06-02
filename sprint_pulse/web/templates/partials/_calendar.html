@@ -1,0 +1,29 @@
+<div id="calendar" data-member="{{ member.id }}" data-month="{{ month_value }}">
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <div class="row" style="align-items:center; justify-content:space-between">
+    <a class="link" hx-get="/members/{{ member.id }}?month={{ prev_month }}"
+       hx-target="#calendar" hx-swap="outerHTML" href="#">‹ {{ prev_month }}</a>
+    <strong>{{ month_label }}</strong>
+    <a class="link" hx-get="/members/{{ member.id }}?month={{ next_month }}"
+       hx-target="#calendar" hx-swap="outerHTML" href="#">{{ next_month }} ›</a>
+  </div>
+  <table class="cal">
+    <thead><tr>
+      <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+    </tr></thead>
+    <tbody>
+      {% for week in weeks %}
+      <tr>
+        {% for c in week %}
+          {% if c.weekend or not c.in_month %}
+            <td class="cal-cell muted{% if not c.in_month %} outside{% endif %}">{{ c.day }}</td>
+          {% else %}
+            <td class="cal-cell day {{ c.type }}" data-date="{{ c.date }}" data-type="{{ c.type }}"
+                title="{{ c.notes }}">{{ c.day }}<span class="cal-letter">{{ c.letter }}</span></td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

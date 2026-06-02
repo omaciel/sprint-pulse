@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ member.name }} · Sprint Pulse{% endblock %}
+{% block content %}
+<p><a class="link" href="/members">← Team</a></p>
+<h1>{{ member.name }}</h1>
+
+<div class="card">
+  <div class="palette" id="palette">
+    {% set letters = {"pto":"P","holiday":"H","company":"C","partial":"~","tentative":"?"} %}
+    {% for t in types %}
+      <span class="chip {{ t }}{% if loop.first %} sel{% endif %}" data-type="{{ t }}">{{ letters[t] }} {{ t }}</span>
+    {% endfor %}
+    <input type="text" id="cal-notes" placeholder="optional note…" style="flex:1; min-width:140px">
+  </div>
+
+  <div class="row" style="align-items:flex-start; gap:24px">
+    <div style="flex:3">
+      {% include "partials/_calendar.html" %}
+      <p class="field-hint">Pick a type, then click weekdays to mark. Click a marked day of the same type to clear it.</p>
+      <form hx-post="/members/{{ member.id }}/timeoff" hx-target="#calendar" hx-swap="outerHTML"
+            hx-on::after-request="if(event.detail.successful) this.reset()" style="margin-top:10px">
+        <input type="hidden" name="month" value="{{ month_value }}">
+        <div class="row" style="align-items:flex-end">
+          <div><label>From</label><input type="date" name="start" required></div>
+          <div><label>To</label><input type="date" name="end" required></div>
+          <div><label>Type</label><select name="type">
+            {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+          <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add range</button></div>
+        </div>
+      </form>
+    </div>
+
+    <div style="flex:1; min-width:180px">
+      <div class="card" style="margin:0 0 12px"><h2>{{ summary.year }} days off</h2>
+        <p class="muted">{{ summary.quarter }} this quarter</p></div>
+      <div class="card" style="margin:0 0 12px"><h2>Orchestration</h2>
+        <form hx-post="/members/{{ member.id }}/toggle" hx-target="#members-table" hx-swap="none">
+          <label class="muted"><input type="checkbox" {% if member.is_orchestration %}checked{% endif %}
+            onchange="this.form.requestSubmit()"> excluded from capacity</label>
+        </form></div>
+      <div class="card" style="margin:0"><h2>Upcoming</h2>
+        {% if summary.upcoming %}<ul class="muted" style="padding-left:18px; margin:0">
+          {% for u in summary.upcoming %}<li>{{ u.start }}{% if u.end != u.start %} → {{ u.end }}{% endif %} · {{ u.type }}</li>{% endfor %}
+        </ul>{% else %}<p class="muted">Nothing scheduled.</p>{% endif %}</div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/calendar.js"></script>
+{% endblock %}
