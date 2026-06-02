@@ -201,15 +201,14 @@ def set_dates(
     end: date = Form(...),
     session: Session = Depends(get_session),
 ):
-    error = ""
     try:
         sprint_service.set_sprint_dates(session, sprint_id, start, end)
     except ValidationError as e:
         session.rollback()
-        error = e.display()
-    return templates.TemplateResponse(
-        request, "sprint_detail.html", _detail_context(session, sprint_id, date_error=error)
-    )
+        return templates.TemplateResponse(
+            request, "sprint_detail.html", _detail_context(session, sprint_id, date_error=e.display())
+        )
+    return RedirectResponse(f"/sprints/{sprint_id}", status_code=303)
 
 
 @router.post("/sprints/{sprint_id}/events", response_class=HTMLResponse)

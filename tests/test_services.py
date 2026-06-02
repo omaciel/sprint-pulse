@@ -76,6 +76,12 @@ def test_create_sprint_rejects_end_before_start(engine):
             spsvc.create_sprint(s, "2026-99", date(2026, 5, 13), date(2026, 4, 30))
 
 
+def test_set_sprint_dates_rejects_end_before_start(engine):
+    with session_scope(engine) as s:
+        with pytest.raises(ValidationError):
+            spsvc.set_sprint_dates(s, "2026-16", date(2026, 4, 29), date(2026, 4, 16))
+
+
 def test_create_sprint_rejects_duplicate(engine):
     with session_scope(engine) as s:
         with pytest.raises(ValidationError):
