@@ -15,8 +15,9 @@ deletes are handled in the service layer (delete children before parents).
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
+from typing import ClassVar, Optional
 
+from sqlalchemy import Index, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -97,3 +98,21 @@ class TimeOffDay(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     time_off_id: int = Field(foreign_key="timeoff.id", index=True)
     date: date
+
+
+class MemberDayOff(SQLModel, table=True):
+    """One row per (member, working day) absence. Replaces TimeOff + TimeOffDay.
+    Not anchored to a sprint — sprints derive outage by date overlap."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    member_id: int = Field(foreign_key="teammember.id", index=True)
+    # Bare annotation (no Field assignment) avoids a pydantic v2 + SQLModel 0.0.38
+    # name-clash error: field named 'date' typed as 'date' with = Field(…) breaks
+    # annotation resolution when __table_args__ is also present. Index is declared
+    # below in __table_args__ instead.
+    date: date
+    type: str = "pto"  # pto | holiday | company | partial | tentative
+    notes: str = ""
+    __table_args__: ClassVar[tuple] = (
+        UniqueConstraint("member_id", "date", name="uq_member_day"),
+        Index("ix_memberdayoff_date", "date"),
+    )
