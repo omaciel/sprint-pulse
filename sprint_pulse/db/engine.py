@@ -105,9 +105,53 @@ def _ensure_columns(engine: Engine) -> None:
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
 
+# Higher wins when the same (member, day) carried two types in legacy data.
+_TYPE_PRIORITY = {"company": 4, "holiday": 3, "pto": 2, "partial": 1, "tentative": 0}
+
+
+def _migrate_legacy_timeoff(engine: Engine, *, pre_existing: set[str]) -> None:
+    """Flatten legacy TimeOff+TimeOffDay into MemberDayOff, then drop them.
+
+    ``pre_existing`` is the set of table names that existed BEFORE create_all
+    was called.  The migration runs only when the DB was in the old schema:
+    timeoff + timeoffday were present before create_all but memberdayoff was
+    not (i.e. a genuine pre-migration install).  Idempotent thereafter.
+    """
+    if "memberdayoff" in pre_existing:
+        return  # already migrated (or fresh install that previously ran)
+    if "timeoff" not in pre_existing or "timeoffday" not in pre_existing:
+        return  # fresh install — tables were just created by create_all, no legacy data
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql(
+            "SELECT t.member_id, d.date, t.type, t.notes "
+            "FROM timeoff t JOIN timeoffday d ON d.time_off_id = t.id"
+        ).fetchall()
+        best: dict[tuple, tuple[str, str]] = {}
+        for member_id, dt, type_, notes in rows:
+            key = (member_id, dt)
+            cur = best.get(key)
+            if cur is None or _TYPE_PRIORITY.get(type_, 0) > _TYPE_PRIORITY.get(cur[0], 0):
+                best[key] = (type_, notes or (cur[1] if cur else ""))
+            elif not cur[1] and notes:
+                best[key] = (cur[0], notes)
+        for (member_id, dt), (type_, notes) in best.items():
+            conn.exec_driver_sql(
+                "INSERT OR IGNORE INTO memberdayoff (member_id, date, type, notes) "
+                "VALUES (?, ?, ?, ?)", (member_id, dt, type_, notes or ""))
+        conn.exec_driver_sql("DROP TABLE timeoffday")
+        conn.exec_driver_sql("DROP TABLE timeoff")
+
+
 def create_db_and_tables(engine: Engine) -> None:
+    # Snapshot table names BEFORE create_all so the migration can distinguish
+    # a genuine legacy install (old tables present, memberdayoff absent) from a
+    # fresh install (all tables created simultaneously by create_all).
+    with engine.connect() as conn:
+        pre_existing = {row[0] for row in conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
     SQLModel.metadata.create_all(engine)
     _ensure_columns(engine)
+    _migrate_legacy_timeoff(engine, pre_existing=pre_existing)
 
 
 @contextmanager
