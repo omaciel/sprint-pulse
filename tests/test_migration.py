@@ -62,12 +62,13 @@ def test_aliases_resolve_to_members(engine, config_path, sprints_dir):
     assert target_name == "Alice Anderson"
 
 
-def test_timeoff_days_normalized(engine, config_path, sprints_dir):
-    counts = import_yaml(engine, config_path, sprints_dir)
-    with session_scope(engine) as s:
-        n_days = len(s.exec(select(m.TimeOffDay)).all())
-    # one TimeOffDay row per (entry, day)
-    assert n_days >= counts["time_off"]
+def test_import_counts_days_off(valid_dir):
+    from sprint_pulse.db.engine import get_engine
+    from sprint_pulse.migrate import import_yaml
+    eng = get_engine(":memory:")
+    counts = import_yaml(eng, valid_dir / "config.yaml", valid_dir / "sprints_dir")
+    assert "days_off" in counts and counts["days_off"] > 0
+    assert "time_off" not in counts
 
 
 def test_token_not_imported(engine, config_path, sprints_dir):
