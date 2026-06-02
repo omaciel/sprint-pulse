@@ -2,7 +2,7 @@
 
 Mapping back to the original domain:
   config.yaml  -> Settings (singleton) + TeamMember + NameAlias
-  sprints/*.yaml -> Sprint + Event + TimeOff (+ TimeOffDay)
+  sprints/*.yaml -> Sprint + Event + MemberDayOff
 
 The Jira API token is NEVER stored here; Settings only holds ``token_ref``
 naming the backend that holds it (see services/secrets.py).
@@ -84,20 +84,6 @@ class Event(SQLModel, table=True):
     date: date
     kind: str  # tags | gono | ga | freeze | test
     title: str
-
-
-class TimeOff(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    sprint_id: str = Field(foreign_key="sprint.id", index=True)
-    member_id: int = Field(foreign_key="teammember.id", index=True)
-    notes: str = ""
-    type: str = "pto"  # pto | holiday | company | partial | tentative
-
-
-class TimeOffDay(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    time_off_id: int = Field(foreign_key="timeoff.id", index=True)
-    date: date
 
 
 class MemberDayOff(SQLModel, table=True):
