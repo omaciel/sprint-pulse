@@ -1,0 +1,28 @@
+working_days_per_sprint: 10
+
+jira:
+  site: example.atlassian.net
+  board: "1234"
+
+roster:
+  - Alice Anderson
+  - Bruno Costa
+  - Mei Lin
+  - Hassan Ibrahim
+  - Elena Fischer
+  - Frank Garcia
+  - Grace Hughes
+  - Ines Jensen
+  - Dmitri Egorov
+  - Carol Diaz
+  - Jack Kelly
+
+orchestration:
+  - Grace Hughes
+  - Hassan Ibrahim
+
+name_aliases:
+  Alyce Anderson: Alice Anderson
+  Carole Diaz: Carol Diaz
+  Dima Egorov: Dmitri Egorov
+  Gracie Hughes: Grace Hughes

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Schedule · Sprint Pulse{% endblock %}
+{% block content %}
+<h1>Schedule</h1>
+<p class="subtitle">Automatically refresh Jira metrics on a cadence.</p>
+
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<div class="card">
+  <h2>Cadence</h2>
+  <form method="post" action="/scheduler">
+    <label><input type="checkbox" name="enabled" value="true"
+      {% if settings.scheduler_enabled %}checked{% endif %}> Enable automatic refresh</label>
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label for="trigger">Trigger</label>
+        <select id="trigger" name="trigger">
+          <option value="interval" {% if settings.scheduler_trigger == 'interval' %}selected{% endif %}>Every N minutes</option>
+          <option value="cron" {% if settings.scheduler_trigger == 'cron' %}selected{% endif %}>Cron expression</option>
+        </select>
+      </div>
+      <div>
+        <label for="value">Value</label>
+        <input type="text" id="value" name="value" value="{{ settings.scheduler_value }}"
+               placeholder="60  (minutes)  or  0 7 * * 1-5">
+      </div>
+      <div style="flex:0 0 auto; min-width:auto; align-self:flex-end">
+        <button type="submit">Save</button>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:8px">Interval = minutes between runs. Cron = standard 5-field expression.</p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Run now</h2>
+  <button type="button"
+          hx-post="/scheduler/run" hx-target="#run-status" hx-swap="innerHTML"
+          hx-disabled-elt="this" hx-indicator="#refresh-spin">Refresh metrics now</button>
+  <span id="refresh-spin" class="htmx-indicator muted" style="margin-left:10px">
+    <span class="spinner"></span>Refreshing — contacting Jira…
+  </span>
+  <p style="margin-top:12px">
+    Last run: <span id="run-status" hx-get="/scheduler/status" hx-trigger="load">
+      {% include "partials/_run_status.html" %}
+    </span>
+  </p>
+</div>
+{% endblock %}

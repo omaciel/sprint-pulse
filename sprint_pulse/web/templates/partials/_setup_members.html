@@ -1,0 +1,17 @@
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if members %}
+<table class="grid">
+  <tbody>
+    {% for member in members %}
+    <tr>
+      <td>{{ member.name }}</td>
+      <td style="text-align:right">
+        {% if member.is_orchestration %}<span class="pill orch">Orchestration</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No members yet — add your first above.</p>
+{% endif %}

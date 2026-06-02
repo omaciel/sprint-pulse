@@ -1,0 +1,24 @@
+{% if timeoff_error %}<p class="error">{{ timeoff_error }}</p>{% endif %}
+<table class="grid">
+  <thead><tr><th>Associate</th><th>Days</th><th>Type</th><th>Notes</th><th></th></tr></thead>
+  <tbody>
+    {% for t in time_off %}
+    <tr>
+      <td>{{ member_name.get(t.member_id, "?") }}</td>
+      <td class="muted">
+        {% set ds = days_by_entry.get(t.id, []) %}
+        {% if ds %}{{ ds[0] }}{% if ds|length > 1 %} … {{ ds[-1] }} ({{ ds|length }}d){% endif %}{% endif %}
+      </td>
+      <td><span class="pill">{{ t.type }}</span></td>
+      <td class="muted">{{ t.notes }}</td>
+      <td style="text-align:right">
+        <button class="danger"
+                hx-post="/sprints/{{ sprint.id }}/timeoff/{{ t.id }}/delete"
+                hx-target="#timeoff" hx-swap="innerHTML">Delete</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">No time off.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

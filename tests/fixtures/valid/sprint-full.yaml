@@ -1,0 +1,17 @@
+id: 2026-16
+start: 2026-04-16
+end: 2026-04-29
+
+events:
+  - {date: 2026-04-17, kind: gono, title: Go/No-Go deadline 4PM EST}
+  - {date: 2026-04-22, kind: ga,   title: AAP 2.7 GA release}
+  - {date: 2026-04-22, kind: test, title: Testathon Day 1}
+  - {date: 2026-04-23, kind: test, title: Testathon Day 2}
+
+time_off:
+  - associate: Alice Anderson
+    days: [2026-04-24]
+    notes: PTO
+  - associate: __all__
+    days: [2026-04-29]
+    notes: Company holiday

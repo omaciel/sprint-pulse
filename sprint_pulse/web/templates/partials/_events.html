@@ -1,0 +1,20 @@
+{% if event_error %}<p class="error">{{ event_error }}</p>{% endif %}
+<table class="grid">
+  <thead><tr><th>Date</th><th>Kind</th><th>Title</th><th></th></tr></thead>
+  <tbody>
+    {% for e in events %}
+    <tr>
+      <td class="muted">{{ e.date }}</td>
+      <td>{{ e.kind }}</td>
+      <td>{{ e.title }}</td>
+      <td style="text-align:right">
+        <button class="danger"
+                hx-post="/sprints/{{ sprint.id }}/events/{{ e.id }}/delete"
+                hx-target="#events" hx-swap="innerHTML">Delete</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="muted">No events.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

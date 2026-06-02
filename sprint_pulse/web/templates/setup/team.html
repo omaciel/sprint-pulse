@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Setup · Team · Sprint Pulse{% endblock %}
+{% block content %}
+<p class="muted">Step 3 of 3</p>
+<h1>Add your team</h1>
+<p class="subtitle">Mark anyone on Orchestration — they're shown gray and excluded from capacity.</p>
+
+<div class="card">
+  <form hx-post="/setup/team/add" hx-target="#setup-members" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:2">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" placeholder="Jane Doe" required autofocus>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto">
+        <label class="muted"><input type="checkbox" name="is_orchestration" value="true"> Orchestration</label>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
+    </div>
+  </form>
+  <div id="setup-members" style="margin-top:16px">
+    {% include "partials/_setup_members.html" %}
+  </div>
+</div>
+
+<div class="row">
+  <a class="btn" href="/">Finish → go to dashboard</a>
+  {% if not has_sprints %}
+  <a class="btn secondary" href="/sprints/import?wizard=1" style="flex:0 0 auto">← Back to import sprints</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Setup · Sprint Pulse{% endblock %}
+{% block content %}
+<p class="muted">Step 1 of 3</p>
+<h1>App settings & Jira</h1>
+<p class="subtitle">You can change all of this later under Settings.</p>
+
+<form method="post" action="/setup/wizard">
+  <div class="card">
+    <h2>App</h2>
+    <div class="row">
+      <div>
+        <label for="wd">Working days per sprint</label>
+        <input type="number" id="wd" name="working_days_per_sprint" min="1" max="30" value="10" required>
+      </div>
+      <div>
+        <label for="team">Team name</label>
+        <input type="text" id="team" name="team_name" value="Wisdom" required>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:8px">Used as the dashboard title and the Jira sprint-name
+      prefix (sprints are matched as "&lt;team&gt; &lt;id&gt;", e.g. "Wisdom 2026-16").</p>
+  </div>
+
+  <div class="card">
+    <h2>Jira connection <span class="muted" style="font-weight:400">(optional — add later if you prefer)</span></h2>
+    <div class="row">
+      <div>
+        <label for="site">Site</label>
+        <input type="text" id="site" name="jira_site" placeholder="your-org.atlassian.net">
+      </div>
+      <div>
+        <label for="board">Board id</label>
+        <input type="text" id="board" name="jira_board" placeholder="1234">
+      </div>
+    </div>
+    <label for="user">Username (email)</label>
+    <input type="text" id="user" name="jira_username" placeholder="you@example.com">
+    <label for="token">API token</label>
+    <input type="password" id="token" name="jira_token" autocomplete="off">
+    <p style="margin-top:12px">
+      <button type="button" class="secondary"
+              hx-post="/setup/wizard/test"
+              hx-include="closest form"
+              hx-target="#conn-result" hx-swap="innerHTML">Test connection</button>
+      <span id="conn-result" style="margin-left:10px"></span>
+    </p>
+  </div>
+
+  <button type="submit">Next: import sprints →</button>
+</form>
+{% endblock %}

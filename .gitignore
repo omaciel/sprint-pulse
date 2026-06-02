@@ -1,0 +1,42 @@
+# Generated output
+output/*.html
+
+# OS / editor noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local credentials (just in case)
+.env
+.env.local
+
+# SQLite databases (source of truth lives in the app data dir, not the repo)
+*.db
+*.db-journal
+*.sqlite3
+
+# Track project skills (override global ignore of .claude/)
+!.claude/
+.claude/*
+!.claude/skills/
+
+# Pytest
+.pytest_cache/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+
+# Verification artifact (Task 10)
+output/report.html.golden
+
+# Real team data is operator-local, never committed to this repo
+data/

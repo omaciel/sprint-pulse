@@ -1,0 +1,14 @@
+id: 2026-20
+start: 2026-05-14
+end: 2026-05-27
+
+events:
+  - {date: 2026-05-20, kind: ga, title: Demo 1.1 release}
+
+time_off:
+  - associate: Alice Anderson
+    days: [2026-05-18, 2026-05-19, 2026-05-20]
+    notes: PTO
+  - associate: Carol Diaz
+    days: [2026-05-25]
+    notes: Memorial Day holiday

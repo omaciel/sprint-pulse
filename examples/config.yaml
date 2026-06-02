@@ -1,0 +1,26 @@
+# Example team config (fictional) for demos. Import with:
+#   python migrate_yaml_to_sqlite.py --data examples
+# or via `make demo`.
+working_days_per_sprint: 10
+
+team_name: Demo
+
+jira:
+  site: example.atlassian.net
+  board: "1234"
+
+roster:
+  - Alice Anderson
+  - Bruno Costa
+  - Carol Diaz
+  - Dmitri Egorov
+  - Grace Hughes
+  - Hassan Ibrahim
+
+orchestration:
+  - Grace Hughes
+  - Hassan Ibrahim
+
+name_aliases:
+  Alyce Anderson: Alice Anderson
+  Carole Diaz: Carol Diaz

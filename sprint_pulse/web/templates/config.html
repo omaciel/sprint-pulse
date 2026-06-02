@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Settings · Sprint Pulse{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="subtitle">App configuration and Jira connection.</p>
+
+{% if saved %}<p class="pill ok">Saved</p>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<form method="post" action="/config">
+  <div class="card">
+    <h2>App</h2>
+    <div class="row">
+      <div>
+        <label for="wd">Working days per sprint</label>
+        <input type="number" id="wd" name="working_days_per_sprint" min="1" max="30"
+               value="{{ settings.working_days_per_sprint }}" required>
+      </div>
+      <div>
+        <label for="team">Team name</label>
+        <input type="text" id="team" name="team_name" value="{{ settings.team_name }}"
+               placeholder="Wisdom" required>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:8px">Team name is the dashboard title and the Jira
+      sprint-name prefix (sprints are matched as "{{ settings.team_name }} &lt;id&gt;").</p>
+  </div>
+
+  <div class="card">
+    <h2>Jira connection</h2>
+    <div class="row">
+      <div>
+        <label for="site">Site</label>
+        <input type="text" id="site" name="jira_site" value="{{ settings.jira_site }}"
+               placeholder="your-org.atlassian.net">
+      </div>
+      <div>
+        <label for="board">Board id</label>
+        <input type="text" id="board" name="jira_board" value="{{ settings.jira_board }}"
+               placeholder="1234">
+      </div>
+    </div>
+    <label for="user">Username (email)</label>
+    <input type="text" id="user" name="jira_username" value="{{ settings.jira_username }}"
+           placeholder="you@example.com">
+    <label for="token">API token</label>
+    <input type="password" id="token" name="jira_token" autocomplete="off"
+           placeholder="{% if settings.token_ref == 'env' %}set via JIRA_API_TOKEN env var{% else %}leave blank to keep current{% endif %}">
+    <p class="muted" style="margin-top:8px">
+      Token store: <strong>{{ settings.token_ref }}</strong> —
+      {% if settings.token_ref == 'env' %}
+        read from the <code>JIRA_API_TOKEN</code> environment variable (container mode).
+      {% else %}
+        saved in your OS keychain, never in the database.
+      {% endif %}
+    </p>
+  </div>
+
+  <button type="submit">Save</button>
+</form>
+
+<div class="card">
+  <h2>Test connection</h2>
+  <p class="muted">Uses the saved settings + token to call the Jira board API.</p>
+  <button type="button" class="secondary"
+          hx-post="/config/test-connection" hx-target="#conn-result" hx-swap="innerHTML">
+    Test connection
+  </button>
+  <span id="conn-result" style="margin-left:10px"></span>
+</div>
+{% endblock %}

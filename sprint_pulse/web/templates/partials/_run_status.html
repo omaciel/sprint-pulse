@@ -1,0 +1,7 @@
+{% if settings.last_status %}
+<span class="pill {{ settings.last_status }}">{{ settings.last_status }}</span>
+<span class="muted">{{ settings.last_log }}</span>
+{% if settings.last_run %}<span class="muted">· {{ settings.last_run.strftime("%Y-%m-%d %H:%M") }}</span>{% endif %}
+{% else %}
+<span class="muted">Never run.</span>
+{% endif %}
