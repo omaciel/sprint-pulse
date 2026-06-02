@@ -151,14 +151,10 @@ def remove_member(session: Session, member_id: int) -> None:
         select(m.NameAlias).where(m.NameAlias.target_member_id == member_id)
     ).all():
         session.delete(alias)
-    for entry in session.exec(
-        select(m.TimeOff).where(m.TimeOff.member_id == member_id)
+    for row in session.exec(
+        select(m.MemberDayOff).where(m.MemberDayOff.member_id == member_id)
     ).all():
-        for day in session.exec(
-            select(m.TimeOffDay).where(m.TimeOffDay.time_off_id == entry.id)
-        ).all():
-            session.delete(day)
-        session.delete(entry)
+        session.delete(row)
     session.delete(member)
 
 

@@ -16,11 +16,10 @@ from sprint_pulse.config import Config
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.jira import JiraUnavailable
-from sprint_pulse.services import config_service, jira_service
+from sprint_pulse.services import config_service, jira_service, time_off_service
 from sprint_pulse.sprints import (
     Event,
     Sprint,
-    TimeOffEntry,
     _suggest,
     event_kind_error,
     infer_type,
@@ -53,8 +52,7 @@ def _load(session: Session, cfg: Config | None):
 
     rows = list(session.exec(select(m.Sprint)).all())
     events_by_sprint = _group(session.exec(select(m.Event)).all(), lambda e: e.sprint_id)
-    timeoff_by_sprint = _group(session.exec(select(m.TimeOff)).all(), lambda t: t.sprint_id)
-    days_by_entry = _group(session.exec(select(m.TimeOffDay)).all(), lambda d: d.time_off_id)
+    dayoff_rows = list(session.exec(select(m.MemberDayOff)).all())
 
     sprints: list[Sprint] = []
     for row in rows:
@@ -62,21 +60,11 @@ def _load(session: Session, cfg: Config | None):
             Event(date=e.date, kind=e.kind, title=e.title)
             for e in sorted(events_by_sprint.get(row.id, []), key=lambda e: e.date)
         )
-        time_off: list[TimeOffEntry] = []
-        for entry in timeoff_by_sprint.get(row.id, []):
-            days = tuple(sorted(d.date for d in days_by_entry.get(entry.id, [])))
-            if not days or entry.member_id not in member_name:
-                continue
-            time_off.append(
-                TimeOffEntry(
-                    associate=member_name[entry.member_id],
-                    days=days,
-                    notes=entry.notes,
-                    type=entry.type,
-                )
-            )
+        time_off = tuple(
+            time_off_service.entries_for_sprints(dayoff_rows, member_name, row.start, row.end)
+        )
         sprints.append(
-            Sprint(id=row.id, start=row.start, end=row.end, events=events, time_off=tuple(time_off))
+            Sprint(id=row.id, start=row.start, end=row.end, events=events, time_off=time_off)
         )
     sprints.sort(key=sort_key)
     return sprints, {row.id: row for row in rows}
@@ -159,12 +147,6 @@ def delete_sprint(session: Session, sprint_id: str) -> None:
     sprint = _get_sprint(session, sprint_id)
     for event in session.exec(select(m.Event).where(m.Event.sprint_id == sprint_id)).all():
         session.delete(event)
-    for entry in session.exec(select(m.TimeOff).where(m.TimeOff.sprint_id == sprint_id)).all():
-        for day in session.exec(
-            select(m.TimeOffDay).where(m.TimeOffDay.time_off_id == entry.id)
-        ).all():
-            session.delete(day)
-        session.delete(entry)
     session.delete(sprint)
 
 

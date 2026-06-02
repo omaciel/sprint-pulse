@@ -14,6 +14,7 @@ from sqlmodel import Session, select
 from sprint_pulse.config import load_config
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, session_scope
+from sprint_pulse.services.time_off_service import TYPE_PRIORITY
 from sprint_pulse.sprints import load_sprints
 
 
@@ -76,8 +77,9 @@ def import_yaml(
                 m.NameAlias(source=source, target_member_id=members[target].id)
             )
 
-        # Sprints + events + time-off.
-        n_events = n_timeoff = n_days = 0
+        # Sprints + events.
+        n_events = 0
+        day_off: dict[tuple, tuple[str, str]] = {}  # (member_id, date) -> (type, notes)
         for sprint in sprints:
             session.add(m.Sprint(id=sprint.id, start=sprint.start, end=sprint.end))
             for ev in sprint.events:
@@ -86,18 +88,16 @@ def import_yaml(
                 )
                 n_events += 1
             for entry in sprint.time_off:
-                row = m.TimeOff(
-                    sprint_id=sprint.id,
-                    member_id=members[entry.associate].id,
-                    notes=entry.notes,
-                    type=entry.type,
-                )
-                session.add(row)
-                session.flush()
+                mid = members[entry.associate].id
                 for d in entry.days:
-                    session.add(m.TimeOffDay(time_off_id=row.id, date=d))
-                    n_days += 1
-                n_timeoff += 1
+                    key = (mid, d)
+                    cur = day_off.get(key)
+                    if cur is None or TYPE_PRIORITY[entry.type] > TYPE_PRIORITY[cur[0]]:
+                        day_off[key] = (entry.type, entry.notes or (cur[1] if cur else ""))
+                    elif not cur[1] and entry.notes:
+                        day_off[key] = (cur[0], entry.notes)
+        for (mid, d), (type_, notes) in day_off.items():
+            session.add(m.MemberDayOff(member_id=mid, date=d, type=type_, notes=notes))
 
     return {
         "members": len(cfg.roster),
@@ -105,16 +105,14 @@ def import_yaml(
         "aliases": len(cfg.name_aliases),
         "sprints": len(sprints),
         "events": n_events,
-        "time_off": n_timeoff,
-        "time_off_days": n_days,
+        "days_off": len(day_off),
     }
 
 
 def _wipe(session: Session) -> None:
     """Delete all rows (used by force re-import)."""
     for model in (
-        m.TimeOffDay,
-        m.TimeOff,
+        m.MemberDayOff,
         m.Event,
         m.Sprint,
         m.NameAlias,

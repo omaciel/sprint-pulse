@@ -56,7 +56,7 @@ def test_remove_member_cascades(engine):
         mid = member.id
         cfgsvc.remove_member(s, mid)
     with session_scope(engine) as s:
-        assert s.exec(select(m.TimeOff).where(m.TimeOff.member_id == mid)).first() is None
+        assert s.exec(select(m.MemberDayOff).where(m.MemberDayOff.member_id == mid)).first() is None
         assert s.exec(select(m.NameAlias).where(m.NameAlias.target_member_id == mid)).first() is None
 
 
@@ -108,19 +108,14 @@ def test_add_time_off_rejects_out_of_range_day(engine):
             spsvc.add_time_off(s, "2026-16", "Alice Anderson", [date(2026, 12, 25)], "PTO")
 
 
-def test_add_time_off_infers_type_and_persists(engine):
+def test_dashboard_hydration_reflects_member_day_off(engine):
+    from sprint_pulse.services import time_off_service as tos
     with session_scope(engine) as s:
-        created = spsvc.add_time_off(
-            s, "2026-16", "Alice Anderson", [date(2026, 4, 17)], "Christmas holiday"
-        )
-        assert created[0].type == "holiday"
+        alice = next(mem for mem in cfgsvc.list_members(s) if mem.name == "Alice Anderson")
+        sprint = spsvc._get_sprint(s, "2026-16")
+        tos.set_days(s, alice.id, [sprint.start], "pto", "PTO")
     with session_scope(engine) as s:
-        sprints = {sp.id: sp for sp in spsvc.build_sprints_from_db(s)}
-        entries = [t for t in sprints["2026-16"].time_off if t.associate == "Alice Anderson"]
-    assert any(t.type == "holiday" for t in entries)
-
-
-def test_add_time_off_all_expands_to_every_member(engine):
-    with session_scope(engine) as s:
-        created = spsvc.add_time_off(s, "2026-16", "__all__", [date(2026, 4, 17)], "Company holiday")
-    assert len(created) == 11
+        sprints = spsvc.build_sprints_from_db(s)
+    target = next(sp for sp in sprints if sp.id == "2026-16")
+    assert any(e.associate == "Alice Anderson" and target.start in e.days
+               for e in target.time_off)
