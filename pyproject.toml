@@ -1,3 +1,42 @@
+[project]
+name = "sprint-pulse"
+version = "0.1.0"
+description = "Team availability dashboard — FastAPI + SQLite, desktop and container."
+requires-python = ">=3.13"
+dependencies = [
+    "PyYAML>=6.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "sqlmodel>=0.0.16",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "apscheduler>=3.10",
+    "certifi>=2024.0",
+]
+
+[project.optional-dependencies]
+# Desktop shell + native packaging. Linux also needs the WebKitGTK system
+# package (gir1.2-webkit2-4.1 / webkit2gtk). The container path needs none of this.
+desktop = [
+    "keyring>=24.0",
+    "pywebview>=5.0",
+    "pyinstaller>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-snapshot>=0.9.0",
+    "httpx>=0.27",
+    "ruff>=0.4",
+]
+
+[tool.uv]
+# Sprint Pulse runs as `python -m sprint_pulse.web` from the repo root and the
+# container COPYs the source dir directly — it is never pip-installed. uv installs
+# only dependencies into .venv; no build backend required.
+package = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

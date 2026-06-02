@@ -28,25 +28,27 @@ you control.
 
 ## Requirements
 
-- **Python 3.10+**
-- Dependencies in `requirements.txt` (FastAPI, SQLModel, Jinja2, APScheduler,
-  pywebview, …). Linux desktop also needs the **WebKitGTK** system package
-  (`gir1.2-webkit2-4.1` / `webkit2gtk`). The container path needs neither.
+- **Python 3.13+**
+- Dependencies declared in `pyproject.toml` and locked in `uv.lock` (FastAPI,
+  SQLModel, Jinja2, APScheduler, pywebview, …), managed with
+  [uv](https://docs.astral.sh/uv/). The desktop shell + packaging deps live in
+  the optional `desktop` extra; Linux desktop also needs the **WebKitGTK** system
+  package (`gir1.2-webkit2-4.1` / `webkit2gtk`). The container path needs neither.
 - A Jira API token with read access to your Scrum board (for live metrics).
 
 ## Setup
 
-Use a virtualenv so the `make` targets have the dependencies:
+`uv sync` creates the `.venv` and installs dependencies from the lockfile:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate          # then `make <target>` just works
-pip install -r requirements-dev.txt   # runtime + dev deps
+uv sync --extra desktop   # runtime + desktop + dev deps (use `make install-dev`)
 ```
 
 > The `make` targets **auto-detect `.venv/`** — if it exists they use
 > `.venv/bin/python` automatically, so you don't have to activate it. Override
 > with `make <target> PYTHON=/path/to/python` if you keep the venv elsewhere.
+> `make install` installs runtime + desktop only; `make install-dev` adds the
+> test/lint tooling.
 
 ## Ways to run
 

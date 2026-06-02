@@ -11,11 +11,11 @@ DEMO_DB ?= $(CURDIR)/.demo.db
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Install runtime dependencies
-	$(PYTHON) -m pip install -r requirements.txt
+install:  ## Install runtime dependencies (incl. desktop)
+	uv sync --extra desktop --no-default-groups
 
-install-dev:  ## Install runtime + dev dependencies (pytest, httpx, pyinstaller, ruff)
-	$(PYTHON) -m pip install -r requirements-dev.txt
+install-dev:  ## Install runtime + desktop + dev dependencies (pytest, httpx, pyinstaller, ruff)
+	uv sync --extra desktop
 
 test:  ## Run the test suite
 	$(PYTHON) -m pytest -v
