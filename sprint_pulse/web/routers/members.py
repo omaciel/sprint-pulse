@@ -68,10 +68,13 @@ def delete(request: Request, member_id: int, session: Session = Depends(get_sess
 
 
 def _parse_month(value: str | None) -> tuple[int, int]:
-    """'YYYY-MM' -> (year, month); falls back to today."""
+    """'YYYY-MM' -> (year, month); falls back to today on missing/invalid input."""
     try:
         y, mo = (value or "").split("-")
-        return int(y), int(mo)
+        year, month = int(y), int(mo)
+        if not (1 <= month <= 12):
+            raise ValueError
+        return year, month
     except (ValueError, AttributeError):
         today = date.today()
         return today.year, today.month
@@ -83,7 +86,7 @@ def _shift_month(year: int, month: int, delta: int) -> str:
 
 
 def _calendar_context(session: Session, member_id: int, month: str | None, *, error: str = "") -> dict:
-    member = config_service._get_member(session, member_id)
+    member = config_service.get_member(session, member_id)
     year, mo = _parse_month(month)
     day_map = time_off_service.member_calendar(session, member_id, year, mo)
     today = date.today()

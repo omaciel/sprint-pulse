@@ -109,6 +109,11 @@ def _get_member(session: Session, member_id: int) -> m.TeamMember:
     return member
 
 
+def get_member(session: Session, member_id: int) -> m.TeamMember:
+    """Public accessor: fetch a member by id (raises ValidationError if missing)."""
+    return _get_member(session, member_id)
+
+
 def add_member(session: Session, name: str, *, is_orchestration: bool = False) -> m.TeamMember:
     name = (name or "").strip()
     if not name:

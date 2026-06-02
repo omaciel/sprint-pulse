@@ -86,13 +86,6 @@ def member_calendar(session: Session, member_id: int, year: int, month: int) -> 
     return {r.date: (r.type, r.notes) for r in rows}
 
 
-def member_calendar_all(session: Session, member_id: int) -> dict:
-    rows = session.exec(
-        select(m.MemberDayOff).where(m.MemberDayOff.member_id == member_id)
-    ).all()
-    return {r.date: (r.type, r.notes) for r in rows}
-
-
 def _quarter(d: date) -> int:
     return (d.month - 1) // 3
 
@@ -104,7 +97,8 @@ def member_summary(session: Session, member_id: int, today: date) -> dict:
     year_days = [r for r in rows if r.date.year == today.year]
     quarter_days = [r for r in year_days if _quarter(r.date) == _quarter(today)]
     upcoming_rows = sorted((r for r in rows if r.date >= today), key=lambda r: r.date)
-    # Merge consecutive same-type days into (start, end, type) runs.
+    # Merge consecutive same-type days into (start, end, type) runs; the <=3-day
+    # gap bridges a Fri→Mon absence across the weekend (non-working days).
     runs: list[dict] = []
     for r in upcoming_rows:
         if runs and runs[-1]["type"] == r.type and (r.date - runs[-1]["end"]).days <= 3:
