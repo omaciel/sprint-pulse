@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Sprints · Sprint Pulse{% endblock %}
+
+{% macro sprint_table(sprints, archived) %}
+<table class="grid">
+  <thead><tr><th>Sprint</th><th>Dates</th><th>State</th><th>Tickets</th><th></th></tr></thead>
+  <tbody>
+    {% for s in sprints %}
+    <tr>
+      <td><a class="link" href="/sprints/{{ s.id }}">{{ s.id }}</a></td>
+      <td class="muted">{{ s.start }} → {{ s.end }}</td>
+      <td><span class="pill {{ s.jira_state }}">{{ s.jira_state }}</span></td>
+      <td class="muted">{{ s.done_n }}/{{ s.tot_n }} · {{ s.done_sp }}/{{ s.tot_sp }} SP</td>
+      <td style="text-align:right; white-space:nowrap">
+        {% if archived %}
+          <form method="post" action="/sprints/{{ s.id }}/unarchive" class="inline">
+            <button class="secondary">Unarchive</button>
+          </form>
+        {% else %}
+          <form method="post" action="/sprints/{{ s.id }}/archive" class="inline">
+            <button class="secondary">Archive</button>
+          </form>
+        {% endif %}
+        <form method="post" action="/sprints/{{ s.id }}/delete" class="inline"
+              onsubmit="return confirm('Delete sprint {{ s.id }}? This removes its events and time off.')">
+          <button class="danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">{% if archived %}None archived.{% else %}No active sprints — import from Jira or add one above.{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between">
+  <h1>Sprints</h1>
+  <a class="btn" href="/sprints/import">Import from Jira</a>
+</div>
+<p class="subtitle">Each sprint holds its release events and the team's time off. Archived sprints stay here but drop off the dashboard.</p>
+
+<div class="card">
+  <h2>Add a sprint manually</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/sprints">
+    <div class="row">
+      <div>
+        <label for="sprint_id">Sprint id</label>
+        <input type="text" id="sprint_id" name="sprint_id" placeholder="2026-28" required>
+      </div>
+      <div>
+        <label for="start">Start</label>
+        <input type="date" id="start" name="start" required>
+      </div>
+      <div>
+        <label for="end">End</label>
+        <input type="date" id="end" name="end" required>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Active sprints</h2>
+  {{ sprint_table(active_sprints, False) }}
+</div>
+
+{% if archived_sprints %}
+<div class="card">
+  <h2>Archived</h2>
+  {{ sprint_table(archived_sprints, True) }}
+</div>
+{% endif %}
+{% endblock %}

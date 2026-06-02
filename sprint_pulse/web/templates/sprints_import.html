@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Import sprints · Sprint Pulse{% endblock %}
+{% set qbase = "/sprints/import?" + ("wizard=1&" if wizard else "") %}
+{% block content %}
+{% if wizard %}<p class="muted">Step 2 of 3</p>{% else %}<p><a class="link" href="/sprints">← All sprints</a></p>{% endif %}
+<h1>Import sprints from Jira</h1>
+<p class="subtitle">Every sprint on board <strong>{{ settings.jira_board }}</strong>. Tick the ones to import and confirm each id (e.g. <code>2026-16</code>). Dates come from Jira. Selections are remembered as you page through.</p>
+
+{% if notice == "none" %}
+<p class="error">No sprints were selected. Tick one or more rows and choose “Import selected”, use “Import all importable”, or {{ "Skip" if wizard else "Cancel" }}.</p>
+{% endif %}
+
+{% if error %}
+<div class="card"><p class="error">{{ error }}</p>
+  <p class="muted">Configure the connection under <a class="link" href="/config">Settings</a> and try again.</p>
+  <p>{% if wizard %}<a class="btn" href="/setup/team">Skip → add your team</a>{% else %}<a class="btn secondary" href="/sprints">Cancel</a>{% endif %}</p>
+</div>
+{% elif total == 0 %}
+<div class="card"><p class="muted">The board returned no sprints.</p>
+  <p>{% if wizard %}<a class="btn" href="/setup/team">Skip → add your team</a>{% else %}<a class="btn secondary" href="/sprints">Cancel</a>{% endif %}</p>
+</div>
+{% else %}
+<form method="post" action="/sprints/import" id="import-form">
+  {% if wizard %}<input type="hidden" name="wizard" value="1">{% endif %}
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+      <span class="muted">Showing {{ range_lo }}–{{ range_hi }} of {{ total }} · page {{ page }}/{{ pages }} · <strong id="sel-count">0</strong> selected</span>
+      <span>
+        <label class="muted" style="margin:0"><input type="checkbox" id="select-all" style="width:auto;height:auto"> Select all on this page</label>
+        <button type="button" id="clear-sel" class="secondary" style="margin-left:10px">Clear selection</button>
+      </span>
+    </div>
+    <table class="grid">
+      <thead>
+        <tr><th style="width:36px"></th><th>Import as (id)</th><th>Jira sprint</th><th>State</th><th>Dates</th></tr>
+      </thead>
+      <tbody>
+        {% for c in candidates %}
+        <tr data-jira="{{ c.jira_id }}">
+          <td>
+            {% if c.already_imported %}<span class="muted" title="Already imported">✓</span>
+            {% elif not c.importable %}<span class="muted" title="No dates in Jira">—</span>
+            {% else %}<input type="checkbox" class="pick" name="jira_ids" value="{{ c.jira_id }}" style="width:auto;height:auto">{% endif %}
+          </td>
+          <td>
+            {% if c.already_imported %}<span class="muted">{{ c.suggested_id or "—" }}</span>
+            {% else %}
+              <input type="text" class="idfield" name="id_{{ c.jira_id }}" value="{{ c.suggested_id }}"
+                     placeholder="2026-16" style="max-width:140px"
+                     {{ "disabled" if not c.importable else "" }}>
+            {% endif %}
+          </td>
+          <td>{{ c.name }} <span class="muted">#{{ c.jira_id }}</span></td>
+          <td><span class="pill {{ c.state }}">{{ c.state }}</span></td>
+          <td class="muted">
+            {% if c.start and c.end %}{{ c.start }} → {{ c.end }}
+            {% else %}<span title="Add manually">no dates</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if pages > 1 %}
+    <div style="display:flex; gap:10px; align-items:center; margin-top:12px">
+      {% if page > 1 %}<a class="btn secondary" href="{{ qbase }}page={{ page - 1 }}">← Prev</a>{% endif %}
+      {% if page < pages %}<a class="btn secondary" href="{{ qbase }}page={{ page + 1 }}">Next →</a>{% endif %}
+      <span class="muted">Picks are kept across pages; “Import selected” imports them all.</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="row" style="align-items:center">
+    <button type="submit" name="action" value="selected" style="flex:0 0 auto">
+      {{ "Import selected & continue" if wizard else "Import selected" }}
+    </button>
+    {% if importable_total %}
+    <button type="submit" name="action" value="all" class="secondary" style="flex:0 0 auto"
+            onclick="return confirm('Import all {{ importable_total }} importable sprints (using suggested ids)?')">
+      Import all importable ({{ importable_total }})
+    </button>
+    {% endif %}
+    {% if wizard %}
+      <a class="btn secondary" href="/setup/team" style="flex:0 0 auto">Skip → add your team</a>
+    {% else %}
+      <a class="btn secondary" href="/sprints" style="flex:0 0 auto">Cancel</a>
+    {% endif %}
+  </div>
+</form>
+
+<script>
+(function () {
+  const STORE = "spImport";
+  const load = () => JSON.parse(sessionStorage.getItem(STORE) || "{}");
+  const save = (m) => sessionStorage.setItem(STORE, JSON.stringify(m));
+  const rows = () => document.querySelectorAll("tr[data-jira]");
+
+  function count() {
+    const el = document.getElementById("sel-count");
+    if (el) el.textContent = Object.keys(load()).length;
+  }
+  function setEntry(jid, on, idval) {
+    const m = load();
+    if (on) m[jid] = idval || ""; else delete m[jid];
+    save(m); count();
+  }
+  function restore() {
+    const m = load();
+    rows().forEach((tr) => {
+      const jid = tr.dataset.jira;
+      const cb = tr.querySelector("input.pick");
+      const idf = tr.querySelector("input.idfield");
+      if (cb && jid in m) { cb.checked = true; if (idf) idf.value = m[jid]; }
+    });
+    count();
+  }
+
+  rows().forEach((tr) => {
+    const jid = tr.dataset.jira;
+    const cb = tr.querySelector("input.pick");
+    const idf = tr.querySelector("input.idfield");
+    if (cb) cb.addEventListener("change", () => setEntry(jid, cb.checked, idf ? idf.value : ""));
+    if (idf) idf.addEventListener("input", () => { if (cb && cb.checked) setEntry(jid, true, idf.value); });
+  });
+
+  const all = document.getElementById("select-all");
+  if (all) all.addEventListener("change", (e) => {
+    rows().forEach((tr) => {
+      const cb = tr.querySelector("input.pick");
+      const idf = tr.querySelector("input.idfield");
+      if (cb) { cb.checked = e.target.checked; setEntry(tr.dataset.jira, cb.checked, idf ? idf.value : ""); }
+    });
+  });
+
+  const clear = document.getElementById("clear-sel");
+  if (clear) clear.addEventListener("click", () => {
+    sessionStorage.removeItem(STORE);
+    rows().forEach((tr) => { const cb = tr.querySelector("input.pick"); if (cb) cb.checked = false; });
+    count();
+  });
+
+  const form = document.getElementById("import-form");
+  if (form) form.addEventListener("submit", (e) => {
+    const action = e.submitter ? e.submitter.value : "selected";
+    if (action === "selected") {
+      // Add hidden inputs for picks made on OTHER pages (on-page picks submit normally).
+      const m = load();
+      const onPage = new Set([...rows()].map((tr) => tr.dataset.jira));
+      Object.keys(m).forEach((jid) => {
+        if (onPage.has(jid)) return;
+        for (const [name, value] of [["jira_ids", jid], ["id_" + jid, m[jid]]]) {
+          const h = document.createElement("input");
+          h.type = "hidden"; h.name = name; h.value = value; form.appendChild(h);
+        }
+      });
+    }
+    sessionStorage.removeItem(STORE);  // these selections are being submitted
+  });
+
+  restore();
+})();
+</script>
+{% endif %}
+{% endblock %}

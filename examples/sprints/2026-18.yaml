@@ -1,0 +1,17 @@
+id: 2026-18
+start: 2026-04-30
+end: 2026-05-13
+
+events:
+  - {date: 2026-05-12, kind: tags, title: Git tags due · for next release}
+
+time_off:
+  - associate: Bruno Costa
+    days: [2026-05-01]
+    notes: Brazil holiday
+  - associate: Carol Diaz
+    days: [2026-05-04]
+    notes: Partially available
+  - associate: Dmitri Egorov
+    days: [2026-05-06]
+    notes: Tentative — may take the day

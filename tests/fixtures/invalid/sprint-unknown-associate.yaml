@@ -1,0 +1,8 @@
+id: 2026-16
+start: 2026-04-16
+end: 2026-04-29
+events: []
+time_off:
+  - associate: Alice Andersen
+    days: [2026-04-24]
+    notes: PTO

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Welcome · Sprint Pulse{% endblock %}
+{% block content %}
+<h1>Welcome to Sprint Pulse ⚡</h1>
+<p class="subtitle">Let's get your team availability dashboard set up.</p>
+<div class="card">
+  <h2>Guided setup</h2>
+  <p class="muted">Walk through app settings, your Jira connection, and your team roster.</p>
+  <p style="margin-top:14px"><a class="btn" href="/setup/wizard">Start guided setup</a></p>
+</div>
+{% if has_yaml %}
+<div class="card">
+  <h2>Import existing data</h2>
+  <p class="muted">Found bundled YAML in <code>data/</code>. Import the existing roster, sprints, and time off in one step.</p>
+  <form method="post" action="/setup/import" style="margin-top:14px">
+    <button type="submit" class="secondary">Import from YAML</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

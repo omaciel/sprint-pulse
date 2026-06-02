@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Team · Sprint Pulse{% endblock %}
+{% block content %}
+<h1>Team</h1>
+<p class="subtitle">Members on Orchestration are always shown gray and excluded from capacity.</p>
+
+<div class="card">
+  <h2>Add a member</h2>
+  <form hx-post="/members" hx-target="#members-table" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:2">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" placeholder="Jane Doe" required>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto">
+        <label class="muted"><input type="checkbox" name="is_orchestration" value="true"> Orchestration</label>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto">
+        <button type="submit">Add</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Roster</h2>
+  <div id="members-table">
+    {% include "partials/_members_table.html" %}
+  </div>
+</div>
+{% endblock %}

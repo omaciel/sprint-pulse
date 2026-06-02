@@ -1,0 +1,4 @@
+working_days_per_sprint: 10
+jira: {site: x, board: "1"}
+orchestration: []
+name_aliases: {}

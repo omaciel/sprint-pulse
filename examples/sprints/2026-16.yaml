@@ -1,0 +1,15 @@
+id: 2026-16
+start: 2026-04-16
+end: 2026-04-29
+
+events:
+  - {date: 2026-04-17, kind: gono, title: Go/No-Go deadline · 4PM EST}
+  - {date: 2026-04-22, kind: ga,   title: Demo 1.0 release}
+
+time_off:
+  - associate: Alice Anderson
+    days: [2026-04-24]
+    notes: PTO
+  - associate: __all__
+    days: [2026-04-20]
+    notes: Company holiday

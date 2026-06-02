@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ sprint.id }} · Sprint Pulse{% endblock %}
+{% block content %}
+<p><a class="link" href="/sprints">← All sprints</a></p>
+<h1>Sprint {{ sprint.id }}</h1>
+<p class="subtitle">{{ sprint.start }} → {{ sprint.end }} · <span class="pill {{ sprint.jira_state }}">{{ sprint.jira_state }}</span></p>
+
+<div class="card">
+  <h2>Time off</h2>
+  <form hx-post="/sprints/{{ sprint.id }}/timeoff" hx-target="#timeoff" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row">
+      <div>
+        <label for="associate">Associate</label>
+        <select id="associate" name="associate" required>
+          <option value="__all__">Everyone (company-wide)</option>
+          {% for mem in members %}<option value="{{ mem.name }}">{{ mem.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="to_start">From</label>
+        <input type="date" id="to_start" name="start" value="{{ sprint.start }}" required>
+      </div>
+      <div>
+        <label for="to_end">To</label>
+        <input type="date" id="to_end" name="end" value="{{ sprint.start }}" required>
+      </div>
+      <div style="flex:2">
+        <label for="notes">Notes</label>
+        <input type="text" id="notes" name="notes" placeholder="PTO">
+      </div>
+      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
+    </div>
+    <p class="field-hint">Notes drive the cell color: PTO / holiday / company / partial / tentative.</p>
+  </form>
+  <div id="timeoff" style="margin-top:16px">
+    {% include "partials/_timeoff.html" %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Release events</h2>
+  <form hx-post="/sprints/{{ sprint.id }}/events" hx-target="#events" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label for="event_date">Date</label>
+        <input type="date" id="event_date" name="event_date" value="{{ sprint.start }}" required>
+      </div>
+      <div>
+        <label for="kind">Kind</label>
+        <select id="kind" name="kind" required>
+          {% for k in event_kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="flex:2">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" placeholder="Git tags due · 4PM EST" required>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
+    </div>
+  </form>
+  <div id="events" style="margin-top:16px">
+    {% include "partials/_events.html" %}
+  </div>
+</div>
+{% endblock %}
