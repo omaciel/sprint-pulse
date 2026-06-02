@@ -59,6 +59,24 @@
   .muted { color: var(--muted); }
   .inline { display: inline; }
   a.link { color: #2563eb; text-decoration: none; }
+  /* Member calendar: month grid + click-to-paint palette. Colors reuse the
+     dashboard design tokens (render_css) so cells match the heatmap. */
+  .cal { border-collapse:collapse; width:100%; font-size:13px; margin-top:6px }
+  .cal th { padding:5px; color:var(--muted); font-size:10px; text-transform:uppercase }
+  .cal-cell { border:1px solid var(--border); height:42px; width:14.2%; text-align:left;
+    vertical-align:top; padding:4px; cursor:default }
+  .cal-cell.day { cursor:pointer }
+  .cal-cell.muted { background:#f6f6f6; color:#bbb }
+  .cal-cell.outside { background:#fafafa; color:#ccc }
+  .cal-letter { float:right; font-weight:600; font-size:11px }
+  .cal-cell.pto{background:var(--pto)} .cal-cell.holiday{background:var(--holiday)}
+  .cal-cell.partial{background:var(--partial)} .cal-cell.company{background:var(--company)}
+  .cal-cell.tentative{background:var(--tentative)}
+  .palette { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:12px }
+  .chip { padding:5px 10px; border-radius:14px; font-size:12px; border:1px solid var(--border); cursor:pointer }
+  .chip.sel { outline:2px solid var(--text); font-weight:600 }
+  .chip.pto{background:var(--pto)} .chip.holiday{background:var(--holiday)}
+  .chip.partial{background:var(--partial)} .chip.company{background:var(--company)} .chip.tentative{background:var(--tentative)}
 </style>
 {% block head %}{% endblock %}
 </head>

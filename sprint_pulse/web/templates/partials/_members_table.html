@@ -6,7 +6,7 @@
   <tbody>
     {% for member in members %}
     <tr>
-      <td>{{ member.name }}</td>
+      <td><a class="link" href="/members/{{ member.id }}">{{ member.name }}</a></td>
       <td>
         {% if member.is_orchestration %}<span class="pill orch">Orchestration</span>
         {% else %}<span class="muted">Capacity</span>{% endif %}

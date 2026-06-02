@@ -86,6 +86,38 @@ def member_calendar(session: Session, member_id: int, year: int, month: int) -> 
     return {r.date: (r.type, r.notes) for r in rows}
 
 
+def member_calendar_all(session: Session, member_id: int) -> dict:
+    rows = session.exec(
+        select(m.MemberDayOff).where(m.MemberDayOff.member_id == member_id)
+    ).all()
+    return {r.date: (r.type, r.notes) for r in rows}
+
+
+def _quarter(d: date) -> int:
+    return (d.month - 1) // 3
+
+
+def member_summary(session: Session, member_id: int, today: date) -> dict:
+    rows = session.exec(
+        select(m.MemberDayOff).where(m.MemberDayOff.member_id == member_id)
+    ).all()
+    year_days = [r for r in rows if r.date.year == today.year]
+    quarter_days = [r for r in year_days if _quarter(r.date) == _quarter(today)]
+    upcoming_rows = sorted((r for r in rows if r.date >= today), key=lambda r: r.date)
+    # Merge consecutive same-type days into (start, end, type) runs.
+    runs: list[dict] = []
+    for r in upcoming_rows:
+        if runs and runs[-1]["type"] == r.type and (r.date - runs[-1]["end"]).days <= 3:
+            runs[-1]["end"] = r.date
+        else:
+            runs.append({"start": r.date, "end": r.date, "type": r.type})
+    return {
+        "year": len(year_days),
+        "quarter": len(quarter_days),
+        "upcoming": runs[:8],
+    }
+
+
 def _entries_from_rows(rows: Sequence[m.MemberDayOff], member_name: dict[int, str]) -> list[TimeOffEntry]:
     """Group MemberDayOff rows into TimeOffEntry objects per (member, type, notes)."""
     by_kind: dict[tuple, list[date]] = {}
