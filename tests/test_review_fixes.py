@@ -130,14 +130,15 @@ def test_refresh_uses_configured_prefix(seeded_engine, monkeypatch):
     assert result["updated"] == 2
 
 
-def test_refresh_zero_match_reports_error(seeded_engine, monkeypatch):
+def test_refresh_zero_match_is_ok_not_error(seeded_engine, monkeypatch):
     from sprint_pulse.services import refresh
-    # Default prefix "Wisdom" but board returns mismatched names.
+    # Default prefix "Wisdom" but board returns names that match nothing.
     monkeypatch.setattr(jira_service, "make_client", lambda s: _FakeClient(["WIS 2026-16"]))
     with session_scope(seeded_engine) as s:
         result = refresh.refresh_all(s)
-    assert result["status"] == "error"
-    assert "prefix" in result["log"]
+    assert result["status"] == "ok"
+    assert result["updated"] == 0
+    assert "matching" in result["log"].lower()
 
 
 # --- #6: scheduler error is URL-encoded -------------------------------------
