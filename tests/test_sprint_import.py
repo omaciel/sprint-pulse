@@ -68,17 +68,19 @@ def test_available_without_jira_returns_error(engine, monkeypatch):
 def test_import_stores_jira_id_and_skips_bad(engine, monkeypatch):
     monkeypatch.setattr(jira_service, "make_client", lambda s: FakeClient())
     with session_scope(engine) as s:
-        # jira 2 -> good; jira 3 -> no dates (skip); jira 5 -> id has a space (skip)
+        # jira 2 -> good; jira 3 -> no dates (skip); jira 5 -> label "forty two"
+        # slugifies to "forty-two" and imports fine
         result = spsvc.import_jira_sprints(
             s, [(2, "2026-20"), (3, "2026-28"), (5, "forty two")]
         )
-    assert result["imported"] == 1
-    assert set(result["skipped"]) == {"2026-28", "forty two"}
+    assert result["imported"] == 2
+    assert set(result["skipped"]) == {"2026-28"}  # only the dateless one is skipped
     with session_scope(engine) as s:
         row = s.get(m.Sprint, "2026-20")
         assert row.start == date(2026, 5, 14)
         assert row.jira_state == "active"
         assert row.jira_sprint_id == 2
+        assert s.get(m.Sprint, "forty-two") is not None
 
 
 def test_reimport_skips_and_preserves_existing(engine, monkeypatch):

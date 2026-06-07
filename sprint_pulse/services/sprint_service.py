@@ -105,28 +105,36 @@ def build_dashboard_data(
 _SPRINT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
-def create_sprint(session: Session, sprint_id: str, start: date, end: date) -> m.Sprint:
-    sprint_id = (sprint_id or "").strip()
-    if not sprint_id:
-        raise ValidationError("sprint id is required", field="id")
-    if not _SPRINT_ID_RE.match(sprint_id):
+def slugify_label(label: str) -> str:
+    """URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
+    Lowercased; runs of non-[A-Za-z0-9._-] collapse to a single hyphen."""
+    return re.sub(r"[^a-z0-9._-]+", "-", label.strip().lower()).strip("-")
+
+
+def create_sprint(session: Session, label: str, start: date, end: date) -> m.Sprint:
+    label = (label or "").strip()
+    if not label:
+        raise ValidationError("sprint label is required", field="label")
+    slug = slugify_label(label)
+    if not slug or not _SPRINT_ID_RE.match(slug):
         raise ValidationError(
-            f'sprint id "{sprint_id}" may use only letters, numbers, ".", "_", "-" '
-            '(no spaces), e.g. "2026-16"',
-            field="id",
+            f'sprint label "{label}" has no usable letters/numbers for an id',
+            field="label",
         )
     if end < start:
         raise ValidationError(
             f"end ({end.isoformat()}) is before start ({start.isoformat()})", field="end"
         )
-    if session.get(m.Sprint, sprint_id):
-        raise ValidationError(f'sprint "{sprint_id}" already exists', field="id")
+    if session.get(m.Sprint, slug):
+        raise ValidationError(
+            f'a sprint with id "{slug}" already exists (label "{label}")', field="label"
+        )
     if (end - start).days + 1 != 14:
         warnings.warn(
-            f"sprint {sprint_id}: length is {(end - start).days + 1} days (expected 14)",
+            f"sprint {slug}: length is {(end - start).days + 1} days (expected 14)",
             stacklevel=2,
         )
-    sprint = m.Sprint(id=sprint_id, start=start, end=end)
+    sprint = m.Sprint(id=slug, label=label, start=start, end=end)
     session.add(sprint)
     session.flush()
     return sprint
@@ -261,13 +269,14 @@ def import_jira_sprints(session: Session, selections: list[tuple[int, str]]) -> 
             skipped.append(chosen_id or str(jira_id))
             continue
         try:
-            # create_sprint validates id shape / dups before any write, so a
-            # failure here leaves earlier creates in this transaction intact.
-            create_sprint(session, chosen_id, info["start"], info["end"])
+            # create_sprint validates the label / derives the slug id and checks
+            # for dups before any write, so a failure here leaves earlier creates
+            # in this transaction intact. It returns the created row (keyed by the
+            # derived slug, which may differ from the chosen label).
+            row = create_sprint(session, chosen_id, info["start"], info["end"])
         except ValidationError:
             skipped.append(chosen_id or str(jira_id))
             continue
-        row = session.get(m.Sprint, chosen_id)
         row.jira_sprint_id = jira_id
         row.jira_state = info.get("state", "future")
         session.add(row)
