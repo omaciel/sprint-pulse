@@ -93,7 +93,7 @@ td.tentative { background: var(--tentative); color: var(--tentative-text); }
 td.company { background: var(--company); color: var(--company-text); }
 td.excluded { background: #e5e7eb; }
 tr.excluded-row td.name { color: var(--muted); font-style: italic; }
-.orch { color: #9ca3af; font-size: 11px; font-weight: 400; margin-left: 4px; }
+.excluded-badge { color: #9ca3af; font-size: 11px; font-weight: 400; margin-left: 4px; }
 td.release { background: #1f2937; color: #f9fafb; font-weight: 700; font-size: 11px; }
 td.release.ga { background: #047857; }
 td.release.tags { background: #1d4ed8; }
@@ -356,24 +356,24 @@ def render_summary(
         (p for p in cfg.roster if p not in cfg.excluded),
         key=lambda p: -person_totals[p],
     )
-    orch = [p for p in cfg.roster if p in cfg.excluded]
+    excluded_members = [p for p in cfg.roster if p in cfg.excluded]
 
     rows: list[str] = []
-    for p in active + orch:
-        is_orch = p in cfg.excluded
+    for p in active + excluded_members:
+        is_excluded = p in cfg.excluded
         cells: list[str] = []
         for i, dpo in enumerate(per_sprint_days_out):
-            n = 0 if is_orch else dpo.get(p, 0)
+            n = 0 if is_excluded else dpo.get(p, 0)
             cells.append('<td class="zero">0</td>' if n == 0 else f"<td>{n}</td>")
-        total = 0 if is_orch else person_totals[p]
+        total = 0 if is_excluded else person_totals[p]
         total_cell = (
             '<td class="total zero">0</td>'
             if total == 0 else f'<td class="total">{total}</td>'
         )
         name_html = (
-            f'{esc(p)} <span class="orch">(Excluded)</span>' if is_orch else esc(p)
+            f'{esc(p)} <span class="excluded-badge">(Excluded)</span>' if is_excluded else esc(p)
         )
-        tr_class = ' class="excluded-row"' if is_orch else ""
+        tr_class = ' class="excluded-row"' if is_excluded else ""
         rows.append(
             f'<tr{tr_class}><td class="name">{name_html}</td>'
             + "".join(cells) + total_cell + "</tr>"

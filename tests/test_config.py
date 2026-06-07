@@ -33,7 +33,7 @@ def test_effective_excludes_excluded(valid_dir: Path) -> None:
 @pytest.mark.parametrize(
     "fixture, expected_substring",
     [
-        ("config-orch-not-in-roster.yaml", "excluded member \"Carol\" not in roster"),
+        ("config-excluded-not-in-roster.yaml", "excluded member \"Carol\" not in roster"),
         ("config-alias-target-not-in-roster.yaml", "alias target \"Carol\" not in roster"),
         ("config-duplicate-roster.yaml", "duplicate roster entry \"Alice\""),
         ("config-missing-roster.yaml", "missing required field \"roster\""),

@@ -8,7 +8,7 @@
     <tr>
       <td><a class="link" href="/members/{{ member.id }}">{{ member.name }}</a></td>
       <td>
-        {% if member.is_excluded %}<span class="pill orch">Excluded</span>
+        {% if member.is_excluded %}<span class="pill excluded">Excluded</span>
         {% else %}<span class="muted">Capacity</span>{% endif %}
       </td>
       <td style="text-align:right; white-space:nowrap">

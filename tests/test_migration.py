@@ -33,10 +33,10 @@ def test_import_counts(engine, config_path, sprints_dir):
 def test_excluded_flags_persist(engine, config_path, sprints_dir):
     import_yaml(engine, config_path, sprints_dir)
     with session_scope(engine) as s:
-        orch = s.exec(
+        excluded_members = s.exec(
             select(m.TeamMember).where(m.TeamMember.is_excluded == True)  # noqa: E712
         ).all()
-        names = {member.name for member in orch}
+        names = {member.name for member in excluded_members}
     assert names == {"Grace Hughes", "Hassan Ibrahim"}
 
 

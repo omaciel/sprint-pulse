@@ -64,7 +64,10 @@ def test_render_sprint_includes_event_letters(cfg: Config) -> None:
 def test_render_sprint_excluded_marked_and_uncounted(cfg: Config) -> None:
     sprint = _minimal_sprint()
     html, days_out = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
-    assert 'class="excluded"' in html or 'excluded-row' in html
+    assert 'class="excluded"' in html
+    # NOTE: excluded-row is emitted only by render_summary, not render_sprint;
+    # the sprint table marks excluded cells with td.excluded, not a row class.
+    assert 'excluded' in html
     assert 'title="Excluded from capacity"' in html
 
 
