@@ -69,6 +69,7 @@ def update_event_type(session, key, label, abbreviation, color):
     row = session.get(m.EventType, key)
     if row is None:
         raise ValidationError(f'no event type "{key}"')
+    # key (PK) is frozen at creation; only label/abbreviation/color are editable
     _, row.label, row.abbreviation, row.color = _validate(label, abbreviation, color)
     session.add(row); return row
 
@@ -77,26 +78,29 @@ def update_absence_type(session, key, label, abbreviation, color):
     row = session.get(m.AbsenceType, key)
     if row is None:
         raise ValidationError(f'no absence type "{key}"')
+    # key (PK) is frozen at creation; only label/abbreviation/color are editable
     _, row.label, row.abbreviation, row.color = _validate(label, abbreviation, color)
     session.add(row); return row
 
 
 def delete_event_type(session, key):
+    row = session.get(m.EventType, key)
+    if row is None:
+        raise ValidationError(f'no event type "{key}"')
     n = len(session.exec(select(m.Event).where(m.Event.kind == key)).all())
     if n:
         raise ValidationError(f'cannot delete: {n} event(s) still use "{key}"', field="key")
-    row = session.get(m.EventType, key)
-    if row is not None:
-        session.delete(row)
+    session.delete(row)
 
 
 def delete_absence_type(session, key):
+    row = session.get(m.AbsenceType, key)
+    if row is None:
+        raise ValidationError(f'no absence type "{key}"')
     n = len(session.exec(select(m.MemberDayOff).where(m.MemberDayOff.type == key)).all())
     if n:
         raise ValidationError(f'cannot delete: {n} absence(s) still use "{key}"', field="key")
-    row = session.get(m.AbsenceType, key)
-    if row is not None:
-        session.delete(row)
+    session.delete(row)
 
 
 def seed_default_types(session: Session) -> None:

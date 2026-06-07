@@ -78,3 +78,40 @@ def test_create_validates_color_and_abbreviation():
             tsvc.create_absence_type(s, "Too Long Abbr", "ABC", "#A0CBE8")  # >2 chars
         row = tsvc.create_absence_type(s, "Jury Duty", "J", "#A0CBE8")
         assert row.key == "jury-duty"
+
+
+def test_update_event_type_keeps_key_changes_fields():
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        row = tsvc.update_event_type(s, "ga", "Generally Available", "GA", "#A0CBE8")
+        assert row.key == "ga"            # PK unchanged
+        assert row.label == "Generally Available"
+        assert row.abbreviation == "GA"
+        assert row.color == "#A0CBE8"
+
+
+def test_update_missing_type_raises():
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc
+    from sprint_pulse.errors import ValidationError
+    import pytest
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        with pytest.raises(ValidationError):
+            tsvc.update_absence_type(s, "nope", "X", "X", "#A0CBE8")
+
+
+def test_delete_missing_type_raises():
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc
+    from sprint_pulse.errors import ValidationError
+    import pytest
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        with pytest.raises(ValidationError):
+            tsvc.delete_event_type(s, "ghost")
