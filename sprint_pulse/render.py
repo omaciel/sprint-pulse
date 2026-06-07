@@ -18,9 +18,9 @@ def esc(value: object) -> str:
     return _escape(str(value), quote=True)
 
 
-def team_display(cfg: Config, sprint: Sprint) -> str:
-    """The sprint's display/Jira name, e.g. 'Wisdom 2026-16'."""
-    return f"{cfg.team_name} {sprint.id}"
+def sprint_display(sprint: Sprint) -> str:
+    """The sprint's display name — the free-form label (falls back to the id)."""
+    return sprint.label or sprint.id
 
 
 CSS = """:root {
@@ -326,7 +326,7 @@ def render_sprint(
     html = f"""<section class="sprint">
   <div class="sprint-header">
     <div class="sprint-title">
-      <h2>{esc(team_display(cfg, sprint))}</h2>
+      <h2>{esc(sprint_display(sprint))}</h2>
       <span class="dates">{date_range}</span>
     </div>
     {info_html}
@@ -343,10 +343,10 @@ def render_sprint(
 def render_summary(
     cfg: Config,
     per_sprint_days_out: list[dict[str, int]],
-    sprint_ids: list[str],
+    sprint_labels: list[str],
 ) -> str:
     person_totals = {p: 0 for p in cfg.roster}
-    sprint_totals = [0] * len(sprint_ids)
+    sprint_totals = [0] * len(sprint_labels)
     for p in cfg.roster:
         for i, dpo in enumerate(per_sprint_days_out):
             person_totals[p] += dpo.get(p, 0)
@@ -386,7 +386,7 @@ def render_summary(
         cls = ' class="peak"' if n == peak and n > 0 else ""
         foot_cells.append(f"<td{cls}>{n}</td>")
 
-    head_cells = "".join(f"<th>{esc(sid)}</th>" for sid in sprint_ids)
+    head_cells = "".join(f"<th>{esc(label)}</th>" for label in sprint_labels)
 
     return f"""<section class="summary">
   <h2>Per-Associate Total</h2>
@@ -427,7 +427,7 @@ def render_full_html(
     summary_html = render_summary(
         cfg,
         [days_out_by_sprint[s.id] for s, _, _ in sprints_asc],
-        [s.id for s, _, _ in sprints_asc],
+        [s.label or s.id for s, _, _ in sprints_asc],
     ).replace(
         '<section class="summary">',
         '<section class="summary" hidden>',
@@ -444,7 +444,7 @@ def render_full_html(
         date_range = f"{fmt_date(sprint.start)} – {fmt_date(sprint.end)}"
         nav_items.append(
             f'<li><button data-sprint="{esc(sprint.id)}">'
-            f'<span class="nav-name">{esc(team_display(cfg, sprint))}</span>'
+            f'<span class="nav-name">{esc(sprint_display(sprint))}</span>'
             f'<span class="nav-dates">{date_range}</span>'
             f'<span class="nav-state {state}">{state}</span>'
             f'</button></li>'

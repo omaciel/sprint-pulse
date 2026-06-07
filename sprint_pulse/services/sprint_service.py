@@ -61,7 +61,14 @@ def _load(session: Session, cfg: Config | None):
             time_off_service.entries_for_sprints(dayoff_rows, member_name, row.start, row.end)
         )
         sprints.append(
-            Sprint(id=row.id, start=row.start, end=row.end, events=events, time_off=time_off)
+            Sprint(
+                id=row.id,
+                label=row.label or row.id,
+                start=row.start,
+                end=row.end,
+                events=events,
+                time_off=time_off,
+            )
         )
     sprints.sort(key=sort_key)
     return sprints, {row.id: row for row in rows}

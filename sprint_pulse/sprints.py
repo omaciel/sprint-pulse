@@ -48,10 +48,7 @@ class Sprint:
     end: date
     events: tuple[Event, ...]
     time_off: tuple[TimeOffEntry, ...]
-
-    @property
-    def name(self) -> str:
-        return f"Wisdom {self.id}"
+    label: str = ""
 
 
 def working_days(start: date, end: date) -> list[date]:
