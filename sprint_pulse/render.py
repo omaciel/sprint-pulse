@@ -427,7 +427,7 @@ def render_full_html(
     summary_html = render_summary(
         cfg,
         [days_out_by_sprint[s.id] for s, _, _ in sprints_asc],
-        [s.label or s.id for s, _, _ in sprints_asc],
+        [sprint_display(s) for s, _, _ in sprints_asc],
     ).replace(
         '<section class="summary">',
         '<section class="summary" hidden>',

@@ -43,7 +43,7 @@ class Config:
     roster: list[str]
     orchestration: set[str]
     name_aliases: dict[str, str]
-    # Display label and Jira sprint-name prefix (sprints are "{team_name} {id}").
+    # Team name shown in the page/sidebar headers and used as the Jira sprint-name prefix when matching the board.
     team_name: str = "Wisdom"
 
     @property
