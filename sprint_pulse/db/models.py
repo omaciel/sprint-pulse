@@ -84,7 +84,7 @@ class Event(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     sprint_id: str = Field(foreign_key="sprint.id", index=True)
     date: date
-    kind: str  # tags | gono | ga | freeze | test
+    kind: str  # default keys: tags|gono|ga|freeze|test (user-extensible via EventType)
     title: str
 
 
@@ -114,7 +114,7 @@ class MemberDayOff(SQLModel, table=True):
     # annotation resolution when __table_args__ is also present. Index is declared
     # below in __table_args__ instead.
     date: date
-    type: str = "pto"  # pto | holiday | company | partial | tentative
+    type: str = "pto"  # default keys: pto|holiday|company|partial|tentative (user-extensible via AbsenceType)
     notes: str = ""
     __table_args__: ClassVar[tuple] = (
         UniqueConstraint("member_id", "date", name="uq_member_day"),

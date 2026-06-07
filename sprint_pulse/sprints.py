@@ -61,7 +61,7 @@ class TimeOffEntry:
     associate: str
     days: tuple[date, ...]
     notes: str
-    type: str  # pto | holiday | company | partial | tentative
+    type: str  # default keys: pto|holiday|company|partial|tentative (user-extensible via AbsenceType)
 
 
 @dataclass(frozen=True)

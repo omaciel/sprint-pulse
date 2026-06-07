@@ -192,6 +192,32 @@ def test_label_column_backfills_from_id():
         assert s.get(m.Sprint, "2026-16").label == "2026-16"
 
 
+def test_create_db_renames_is_orchestration_column(tmp_path):
+    """An existing DB with the old is_orchestration column is auto-renamed to
+    is_excluded at startup (create_db_and_tables), preserving the value."""
+    import sqlite3
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine
+    db = tmp_path / "old.db"
+    conn = sqlite3.connect(str(db))
+    conn.executescript(
+        "CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, "
+        "is_orchestration BOOLEAN DEFAULT 0, sort_order INTEGER DEFAULT 0);"
+        "INSERT INTO teammember (id, name, is_orchestration) VALUES (1, 'Alice', 1);"
+    )
+    conn.commit(); conn.close()
+    engine = get_engine(db)
+    create_db_and_tables(engine)  # should rename + seed, not crash
+    with engine.begin() as c:
+        cols = {r[1] for r in c.exec_driver_sql("PRAGMA table_info(teammember)")}
+        assert "is_excluded" in cols and "is_orchestration" not in cols
+        assert c.exec_driver_sql("SELECT is_excluded FROM teammember WHERE id=1").fetchone()[0] == 1
+        # idempotent: second run is a clean no-op
+    create_db_and_tables(engine)
+    with engine.begin() as c:
+        cols = {r[1] for r in c.exec_driver_sql("PRAGMA table_info(teammember)")}
+        assert "is_excluded" in cols and "is_orchestration" not in cols
+
+
 def test_label_column_backfills_null_from_upgrade():
     """Simulate a DB upgrade where ALTER TABLE ADD COLUMN produced NULL labels.
 

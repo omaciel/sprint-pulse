@@ -1,6 +1,11 @@
 """One-time: rename teammember.is_orchestration -> is_excluded on a Sprint Pulse
 DB, backing it up first, then create+seed the new type tables. Idempotent.
 
+NOTE: As of the generic-configurable release, app startup (create_db_and_tables)
+applies this rename automatically and idempotently, so running this script is no
+longer required. It remains useful for an explicit, BACKUP-FIRST migration: it
+copies the DB to a .bak file before altering it (startup does not).
+
 Usage:  python scripts/migrate_excluded.py        # migrates the live DB
 """
 from __future__ import annotations
