@@ -27,9 +27,9 @@ data model and UI in ways that make pure-manual / mixed use awkward:
 
 - A sprint has a free-form **label** (e.g. `"June 2026"`) independent of its
   URL/JS-safe key.
-- Jira linkage is **explicit and optional**. Unlinked sprints are first-class,
-  fully manual. Choosing to use Jira never blocks manual entry.
-- Refresh treats "no Jira-linked sprints" as a normal `ok` outcome, not an error.
+- Jira metrics are **optional**. Sprints that don't resolve to a board sprint are
+  first-class and fully manual. Choosing to use Jira never blocks manual entry.
+- Refresh treats "no matching Jira sprints" as a normal `ok` outcome, not an error.
 - Remove hardcoded `"Wisdom"` / team-prefix coupling from sprint display.
 
 ## Non-goals (explicitly deferred)
@@ -83,21 +83,33 @@ auto-derived from a new free-form **label**.
   consumers (grep `\.name` on `Sprint`). `cfg.team_name` still titles the page;
   it simply stops prefixing every sprint.
 
-### 3. Jira becomes explicit-link-only
+### 3. Jira metrics: implicit match + explicit override, silent skip
 
-In `services/refresh.py`:
+Decision (2026-06-07, revised): keep the convenience name-match instead of going
+explicit-link-only. This matches the user's original phrasing ("if the id is used
+by Jira… if not found, the feature is just skipped; if valid, used normally") and
+preserves existing YAML/manual-sprint behavior. The explicit `jira_sprint_id`
+link (set via import) still takes precedence.
 
-- Match **only** on `row.jira_sprint_id`. Delete the
-  `jira_sprints.get(f"{prefix} {row.id}")` name-prefix fallback (line ~54).
-- Skip any sprint with `jira_sprint_id is None` (unlinked = manual).
-- Status logic:
-  - If there are **no linked sprints at all**, return `status="ok"` with a log
-    like `"No Jira-linked sprints to update."` (was an error).
-  - Keep the genuine error paths: Jira not configured, can't reach the board, or
-    a linked sprint's metric fetch failed (stale numbers kept).
-- `available_jira_sprints` / `import_jira_sprints` are unaffected except that the
-  `suggested_id` it offers is now a *label suggestion* (still slugified on
-  import). The import path continues to set `jira_sprint_id`.
+In `services/refresh.py`, resolve each sprint's Jira id in this order:
+
+1. `row.jira_sprint_id` (explicit, set on import) — wins when present.
+2. Else, name-prefix match: `jira_sprints.get(f"{prefix} {row.label}")`
+   (was `row.id`; now the human label, which equals the id for existing rows
+   since `label` is backfilled to `id`).
+3. If neither resolves, **skip silently** (no error, no stale clobber).
+
+Status logic:
+
+- If **no sprint resolves** to a board sprint, return `status="ok"` with a log
+  like `"No matching Jira sprints — nothing to update."` (was an *error*; this is
+  the key decoupling improvement).
+- Keep the genuine error paths unchanged: Jira not configured, can't reach the
+  board, or a resolved sprint's metric fetch failed (stale numbers kept).
+
+`available_jira_sprints` / `import_jira_sprints` are unaffected except that the
+`suggested_id` they offer is now a *label suggestion* (still slugified on import).
+The import path continues to set `jira_sprint_id`.
 
 ### 4. YAML import
 
@@ -122,9 +134,9 @@ dashboard render
   id     ──►  data-sprint / show()        (DOM keys)
   label  ──►  headers / column <th>       (display)
 
-refresh (only when jira_sprint_id set)
-  jira_sprint_id ──► board metrics ──► cached columns on row
-  unlinked rows: untouched (preserves future manual metrics)
+refresh (resolve jira id: jira_sprint_id, else "{team} {label}" name match)
+  resolved  ──► board metrics ──► cached columns on row
+  unresolved rows: untouched (preserves future manual metrics)
 ```
 
 ## Error handling
@@ -134,9 +146,9 @@ refresh (only when jira_sprint_id set)
 | Label blank / slugifies to empty | `ValidationError(field="label")` |
 | Derived slug already exists | `ValidationError` naming the conflicting label |
 | Jira not configured | refresh `status="error"` (unchanged) |
-| Jira configured, no linked sprints | refresh `status="ok"`, "nothing to update" |
+| Jira configured, no sprint resolves to a board sprint | refresh `status="ok"`, "nothing to update" (was error) |
 | Jira configured, can't reach board | refresh `status="error"` (unchanged) |
-| Linked sprint metric fetch fails | counted as failure, stale numbers kept (unchanged) |
+| Resolved sprint's metric fetch fails | counted as failure, stale numbers kept (unchanged) |
 | YAML duplicate slugs | `SprintError` naming both labels/files |
 
 ## Testing
@@ -147,8 +159,9 @@ refresh (only when jira_sprint_id set)
 - **create_sprint:** accepts `"June 2026"`, stores label verbatim, id `"june-2026"`.
 - **renderer:** labels appear in headers/`<th>`; `data-sprint`/`show()` use slugs;
   no `"Wisdom"`/team prefix on sprint headers.
-- **refresh:** unlinked sprints skipped & untouched; zero-linked → `ok`; linked
-  sprint updates as before; metric-failure path still errors.
+- **refresh:** explicit `jira_sprint_id` wins; name-prefix match still works for
+  YAML/manual sprints; unresolved sprints skipped & untouched; zero matches →
+  `ok` (not error); metric-failure path still errors.
 - **YAML import:** label with spaces imports; filename≠label allowed; duplicate
   slugs rejected; existing example data still imports cleanly.
 - **migration:** existing DB rows backfill `label = id`; dashboard unchanged for
