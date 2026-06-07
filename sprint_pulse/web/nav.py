@@ -10,6 +10,7 @@ NAV_LINKS = [
     ("/", "Dashboard"),
     ("/sprints", "Sprints"),
     ("/members", "Team"),
+    ("/types", "Types"),
     ("/config", "Settings"),
     ("/scheduler", "Schedule"),
 ]

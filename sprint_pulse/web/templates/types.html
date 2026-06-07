@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Types · Sprint Pulse{% endblock %}
+{% block content %}
+<h1>Types</h1>
+<p class="subtitle">Event &amp; absence types: their label, abbreviation, and palette color.</p>
+
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+{% macro swatch(color) %}
+<span style="display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:-3px;background:{{ color }}"></span>
+{%- endmacro %}
+
+{% macro color_select(selected) %}
+<select name="color">
+  {% for c in palette %}<option value="{{ c }}" {% if c == selected %}selected{% endif %}>{{ c }}</option>{% endfor %}
+</select>
+{%- endmacro %}
+
+<div class="card">
+  <h2>Event Types</h2>
+  <table class="grid">
+    <thead>
+      <tr><th>Color</th><th>Label</th><th>Abbr.</th><th>Edit</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for t in event_types %}
+      <tr>
+        <td>{{ swatch(t.color) }}</td>
+        <td>{{ t.label }}</td>
+        <td>{{ t.abbreviation }}</td>
+        <td>
+          <form method="post" action="/types/event/{{ t.key }}/update" class="row" style="margin:0">
+            <input type="text" name="label" value="{{ t.label }}" required>
+            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" maxlength="2" required style="min-width:60px">
+            {{ color_select(t.color) }}
+            <button type="submit" class="secondary">Save</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/types/event/{{ t.key }}/delete" style="margin:0">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:20px">Add an event type</h2>
+  <form method="post" action="/types/event" class="row">
+    <div style="flex:2"><label>Label</label><input type="text" name="label" placeholder="Release freeze" required></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" maxlength="2" placeholder="F" required style="min-width:60px"></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_select(palette[0]) }}</div>
+    <div style="flex:0 0 auto;min-width:auto"><button type="submit">Add</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Absence Types</h2>
+  <table class="grid">
+    <thead>
+      <tr><th>Color</th><th>Label</th><th>Abbr.</th><th>Edit</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for t in absence_types %}
+      <tr>
+        <td>{{ swatch(t.color) }}</td>
+        <td>{{ t.label }}</td>
+        <td>{{ t.abbreviation }}</td>
+        <td>
+          <form method="post" action="/types/absence/{{ t.key }}/update" class="row" style="margin:0">
+            <input type="text" name="label" value="{{ t.label }}" required>
+            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" maxlength="2" required style="min-width:60px">
+            {{ color_select(t.color) }}
+            <button type="submit" class="secondary">Save</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/types/absence/{{ t.key }}/delete" style="margin:0">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:20px">Add an absence type</h2>
+  <form method="post" action="/types/absence" class="row">
+    <div style="flex:2"><label>Label</label><input type="text" name="label" placeholder="Jury Duty" required></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" maxlength="2" placeholder="J" required style="min-width:60px"></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_select(palette[0]) }}</div>
+    <div style="flex:0 0 auto;min-width:auto"><button type="submit">Add</button></div>
+  </form>
+</div>
+{% endblock %}

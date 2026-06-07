@@ -183,3 +183,30 @@ def test_sprint_timeoff_routes_are_gone(seeded_client):
                            data={"associate": "Alice Anderson", "start": "2026-04-20",
                                  "end": "2026-04-20", "notes": "PTO"})
     assert r.status_code == 404
+
+
+def test_types_page_crud_flow():
+    from fastapi.testclient import TestClient
+    from sprint_pulse.web.app import create_app
+    client = TestClient(create_app(":memory:"))
+    # page renders with seeded defaults
+    page = client.get("/types")
+    assert page.status_code == 200
+    assert "PTO" in page.text          # default absence label
+    assert "Release freeze" in page.text  # default event label
+    # create a custom absence type (color must come from the palette)
+    r = client.post("/types/absence",
+                    data={"label": "Jury Duty", "abbreviation": "J", "color": "#A0CBE8"},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    assert "Jury Duty" in client.get("/types").text
+    # invalid color (not in palette) re-renders with an error (200, not redirect)
+    bad = client.post("/types/absence",
+                      data={"label": "Bad", "abbreviation": "B", "color": "#000000"},
+                      follow_redirects=False)
+    assert bad.status_code == 200
+    assert "palette" in bad.text
+    # delete an unused default event type succeeds (303)
+    d = client.post("/types/event/test/delete", follow_redirects=False)
+    assert d.status_code == 303
+    assert "Testathon" not in client.get("/types").text
