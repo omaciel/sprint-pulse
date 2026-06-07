@@ -28,7 +28,8 @@ to two fixed vocabularies:
 ## Decisions (locked during brainstorming, 2026-06-07)
 
 - Excluded-member term: **"Excluded"** (from capacity).
-- Type colors: a **fixed palette** (pick from curated swatches).
+- Type colors: a **fixed palette** (pick from curated swatches) — **Tableau 10**
+  (+ extras), a categorical palette chosen for legend distinctness.
 - Deleting a type that is **in use**: **blocked** with a clear count message.
 - The `"AAP release"` label becomes a fixed generic **"Releases"**.
 - Default team name becomes a generic **"My Team"**.
@@ -120,39 +121,61 @@ AbsenceType: key (PK, slug), label, abbreviation, color, sort_order
 `Event.kind` and `MemberDayOff.type` stay as string columns holding a type `key`
 (unchanged columns; existing values already match the seeded default keys).
 
-### Fixed palette
+### Fixed palette — Tableau 10 (+ extras)
 
-A module constant (e.g. `sprint_pulse/types_defaults.py`):
+A categorical palette (designed for distinctness in legends), defined as a module
+constant (e.g. `sprint_pulse/types_defaults.py`). Tableau 10 core gives exactly
+ten distinct colors — one per default type — plus a few Tableau-20 lights for
+custom-type headroom:
 
 ```
 PALETTE = [
-    # includes every color used by the default seed below, plus extras
-    "#fca5a5", "#ef4444", "#b45309", "#f59e0b", "#fcd34d",
-    "#10b981", "#047857", "#3b82f6", "#93c5fd", "#1d4ed8",
-    "#8b5cf6", "#7c3aed", "#c4b5fd", "#ec4899", "#14b8a6",
-    "#6b7280", "#cbd5e1",
+    # Tableau 10 (core — one per default type)
+    "#4E79A7",  # blue
+    "#F28E2B",  # orange
+    "#E15759",  # red
+    "#76B7B2",  # teal
+    "#59A14F",  # green
+    "#EDC948",  # yellow
+    "#B07AA1",  # purple
+    "#FF9DA7",  # pink
+    "#9C755F",  # brown
+    "#BAB0AC",  # gray
+    # extras for custom types
+    "#A0CBE8",  # light blue
+    "#FFBE7D",  # light orange
+    "#8CD17D",  # light green
+    "#D4A6C8",  # light purple
 ]
 ```
 
-The exact list may be refined in implementation, but it MUST contain every color
-the default seed uses (it does, above). Type color must be one of `PALETTE`.
+Type color must be one of `PALETTE`. This is a deliberate visual refresh: default
+types are reseeded with these colors (the current pastels change). The constant is
+easy to tweak later, and the management UI shows real swatches.
+
+**Contrast note:** these are mid-tone colors used as cell backgrounds. The
+renderer must pick a readable foreground (e.g. compute black/white text from the
+background's luminance, or use a consistent scheme) so single-letter cells stay
+legible — handle this when generating the per-type CSS.
 
 ### Default seed (preserves current look)
 
 The same module defines the default sets, seeded into the tables when empty
 (idempotent — only seeds an empty table, so a user who deletes a default keeps it
-gone). Default keys/letters/colors match today's hard-coded values so existing
-`Event.kind` / `MemberDayOff.type` rows render unchanged. Labels should match the
-current legend text (read `render.py` to copy them exactly):
+gone). Default **keys and letters are unchanged** so existing `Event.kind` /
+`MemberDayOff.type` rows keep validating and showing the same abbreviations; only
+the **colors change** to the Tableau palette. Labels should match the current
+legend text (read `render.py` to copy them exactly):
 
-- Event types: `tags`(T,#1d4ed8), `gono`(G,#b45309), `ga`(R,#047857),
-  `freeze`(F,#6b7280), `test`(X,#7c3aed).
-- Absence types: `pto`(P,#fca5a5), `holiday`(H,#93c5fd), `company`(C,#c4b5fd),
-  `partial`(~,#fcd34d), `tentative`(?, a solid palette color, e.g. #cbd5e1).
+- Event types: `tags`(T,#4E79A7), `gono`(G,#F28E2B), `ga`(R,#59A14F),
+  `freeze`(F,#BAB0AC), `test`(X,#B07AA1).
+- Absence types: `pto`(P,#E15759), `holiday`(H,#76B7B2), `company`(C,#9C755F),
+  `partial`(~,#EDC948), `tentative`(?,#FF9DA7).
 
-All of the above colors are present in `PALETTE`, so the seed validates. Confirm
-the exact default labels (legend text) and letters by reading `render.py`'s
-current `KIND_LETTERS`/`TYPE_LETTERS`/legend before seeding.
+These ten map one-to-one onto Tableau 10, so every default type is distinct, and
+all colors are in `PALETTE`. Confirm exact default labels (legend text) and
+letters by reading `render.py`'s current `KIND_LETTERS`/`TYPE_LETTERS`/legend
+before seeding.
 
 ### Services
 
@@ -261,7 +284,8 @@ excluded members:  TeamMember.is_excluded ──► Config.excluded ──► re
   enforced, duplicate-slug rejected, delete-blocked-while-in-use (with count),
   delete-allowed-when-unused.
 - **Seed:** defaults seeded on empty tables, idempotent (no dupes on re-run; a
-  deleted default stays gone); default keys/letters/colors match prior look.
+  deleted default stays gone); default keys/letters match prior values, colors are
+  the Tableau palette; legend swatches use the seeded colors.
 - **Renderer data-driven:** CSS/letters/legend generated from Config type lists;
   a custom type renders with its palette color + abbreviation; snapshot updated.
 - **Validators:** `add_event`/`set_days` accept DB-defined types incl. a custom
