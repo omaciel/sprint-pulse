@@ -13,8 +13,8 @@ from sprint_pulse.web.scheduler import SchedulerManager, build_trigger
 class FakeClient:
     def fetch_sprints(self):
         return {
-            "Wisdom 2026-16": {"id": 100, "state": "active"},
-            "Wisdom 2026-18": {"id": 101, "state": "closed"},
+            "My Team 2026-16": {"id": 100, "state": "active"},
+            "My Team 2026-18": {"id": 101, "state": "closed"},
         }
 
     def fetch_metrics(self, sprint_id):

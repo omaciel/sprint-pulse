@@ -27,7 +27,7 @@ class Settings(SQLModel, table=True):
     id: Optional[int] = Field(default=1, primary_key=True)
     working_days_per_sprint: int = 10
     # Display label + Jira sprint-name prefix (board sprints are "{team_name} {id}").
-    team_name: str = "Wisdom"
+    team_name: str = "My Team"
 
     jira_site: str = ""
     jira_board: str = ""

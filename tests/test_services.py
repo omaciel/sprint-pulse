@@ -21,6 +21,13 @@ def engine(valid_dir):
 
 # --- config_service ---------------------------------------------------------
 
+def test_default_team_name_is_generic(engine):
+    from sprint_pulse.services import config_service as cfgsvc
+    with session_scope(engine) as s:
+        settings = cfgsvc.get_settings(s)
+        assert settings.team_name == "My Team"
+
+
 def test_build_config_from_db_matches_yaml(engine):
     with session_scope(engine) as s:
         cfg = cfgsvc.build_config_from_db(s)

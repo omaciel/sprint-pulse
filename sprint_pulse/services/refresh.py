@@ -38,7 +38,7 @@ def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
         session.add(settings)
         return {"status": "error", "updated": 0, "log": settings.last_log}
 
-    prefix = settings.team_name or "Wisdom"
+    prefix = settings.team_name or "My Team"
     by_jira_id = {info["id"]: info for info in jira_sprints.values()}
     rows = list(session.exec(select(m.Sprint)).all())
     updated = 0

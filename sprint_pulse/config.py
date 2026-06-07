@@ -44,7 +44,7 @@ class Config:
     orchestration: set[str]
     name_aliases: dict[str, str]
     # Team name shown in the page/sidebar headers and used as the Jira sprint-name prefix when matching the board.
-    team_name: str = "Wisdom"
+    team_name: str = "My Team"
 
     @property
     def effective(self) -> list[str]:
@@ -93,5 +93,5 @@ def load_config(path: Path | str) -> Config:
         roster=list(roster),
         orchestration=orchestration,
         name_aliases=aliases,
-        team_name=str(raw.get("team_name") or "Wisdom"),
+        team_name=str(raw.get("team_name") or "My Team"),
     )

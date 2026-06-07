@@ -52,7 +52,7 @@ def build_config_from_db(session: Session) -> Config:
         roster=roster,
         orchestration=orchestration,
         name_aliases=aliases,
-        team_name=settings.team_name or "Wisdom",
+        team_name=settings.team_name or "My Team",
     )
 
 
@@ -94,7 +94,7 @@ def apply_jira_settings(
     if working_days_per_sprint is not None:
         fields["working_days_per_sprint"] = working_days_per_sprint
     if team_name is not None:
-        fields["team_name"] = (team_name or "").strip() or "Wisdom"
+        fields["team_name"] = (team_name or "").strip() or "My Team"
     settings = update_settings(session, **fields)
     # Only the keyring backend is writable; env is operator-provided.
     if jira_token.strip() and token_ref == "keyring" and username:

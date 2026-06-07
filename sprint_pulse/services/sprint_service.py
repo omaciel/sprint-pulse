@@ -236,7 +236,7 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
     except JiraUnavailable as e:
         return None, f"Could not reach Jira ({e}). On the VPN?"
 
-    prefix = (config_service.get_settings(session).team_name or "Wisdom") + " "
+    prefix = (config_service.get_settings(session).team_name or "My Team") + " "
     rows = session.exec(select(m.Sprint)).all()
     existing_ids = {row.id for row in rows}
     existing_jira_ids = {row.jira_sprint_id for row in rows if row.jira_sprint_id is not None}

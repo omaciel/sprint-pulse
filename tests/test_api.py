@@ -38,7 +38,7 @@ def test_empty_db_redirects_to_setup(empty_client):
 def test_dashboard_renders_when_seeded(seeded_client):
     r = seeded_client.get("/")
     assert r.status_code == 200
-    assert "Wisdom Team" in r.text
+    assert "My Team" in r.text
     assert "Sprint Pulse" in r.text  # the injected app-bar
 
 

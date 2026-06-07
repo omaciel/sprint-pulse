@@ -56,7 +56,7 @@ def wizard_step1(request: Request, session: Session = Depends(get_session)):
 def wizard_step1_save(
     request: Request,
     working_days_per_sprint: int = Form(10),
-    team_name: str = Form("Wisdom"),
+    team_name: str = Form("My Team"),
     jira_site: str = Form(""),
     jira_board: str = Form(""),
     jira_username: str = Form(""),

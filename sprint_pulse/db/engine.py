@@ -91,7 +91,7 @@ def get_engine(db_path: Path | str | None = None, *, echo: bool = False) -> Engi
 # Columns added after the initial schema. Since we don't use Alembic, we add
 # any missing ones in place so an existing DB file keeps working after upgrade.
 _ADDED_COLUMNS = {
-    "settings": [("team_name", "VARCHAR DEFAULT 'Wisdom'")],
+    "settings": [("team_name", "VARCHAR DEFAULT 'My Team'")],
     "sprint": [
         ("archived", "BOOLEAN DEFAULT 0"),
         ("jira_sprint_id", "INTEGER"),
