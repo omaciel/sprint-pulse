@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import Session
 
 from sprint_pulse.errors import ValidationError
+from sprint_pulse.render import calendar_type_css
 from sprint_pulse.services import config_service, time_off_service, type_service
 from sprint_pulse.sprints import working_days
 from sprint_pulse.web.deps import get_session, templates
@@ -90,6 +91,8 @@ def _calendar_context(session: Session, member_id: int, month: str | None, *, er
     year, mo = _parse_month(month)
     day_map = time_off_service.member_calendar(session, member_id, year, mo)
     today = date.today()
+    absence_types = type_service.list_absence_types(session)
+    letters = {t.key: t.abbreviation for t in absence_types}
     return {
         "active": "/members",
         "member": member,
@@ -97,8 +100,9 @@ def _calendar_context(session: Session, member_id: int, month: str | None, *, er
         "month_label": f"{date(year, mo, 1):%B %Y}",
         "prev_month": _shift_month(year, mo, -1),
         "next_month": _shift_month(year, mo, 1),
-        "weeks": time_off_service.build_month_grid(year, mo, day_map),
-        "absence_types": type_service.list_absence_types(session),
+        "weeks": time_off_service.build_month_grid(year, mo, day_map, letters),
+        "absence_types": absence_types,
+        "cal_type_css": calendar_type_css(absence_types),
         "summary": time_off_service.member_summary(session, member_id, today),
         "error": error,
     }

@@ -15,7 +15,6 @@ from sqlmodel import Session, select
 
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.render import TYPE_LETTERS
 from sprint_pulse.sprints import TimeOffEntry, weekday_error
 
 # Type precedence for resolving a (member, day) that carried two types in source
@@ -146,8 +145,15 @@ def entries_for_sprints(rows, member_name: dict, start: date, end: date) -> list
     return _entries_from_rows(in_range, member_name)
 
 
-def build_month_grid(year: int, month: int, day_map: dict) -> list[list[dict]]:
-    """Weeks (Mon-first) of cell dicts for the calendar template."""
+def build_month_grid(
+    year: int, month: int, day_map: dict, letters: dict[str, str] | None = None
+) -> list[list[dict]]:
+    """Weeks (Mon-first) of cell dicts for the calendar template.
+
+    ``letters`` maps an absence-type key to its display abbreviation (from the DB
+    type table); cells default to an empty letter for unknown/absent keys.
+    """
+    letters = letters or {}
     weeks: list[list[dict]] = []
     for week in _cal.Calendar(firstweekday=0).monthdatescalendar(year, month):
         cells: list[dict] = []
@@ -160,7 +166,7 @@ def build_month_grid(year: int, month: int, day_map: dict) -> list[list[dict]]:
                 "weekend": d.weekday() >= 5,
                 "type": type_,
                 "notes": notes,
-                "letter": TYPE_LETTERS.get(type_, ""),
+                "letter": letters.get(type_, ""),
             })
         weeks.append(cells)
     return weeks

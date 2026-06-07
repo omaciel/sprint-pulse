@@ -3,9 +3,14 @@ from datetime import date
 
 import pytest
 
-from sprint_pulse.config import Config, JiraConfig
+from sprint_pulse.config import Config, JiraConfig, TypeDef
 from sprint_pulse.render import render_sprint, derive_sprint_notes
 from sprint_pulse.sprints import Event, Sprint, TimeOffEntry
+from sprint_pulse.types_defaults import DEFAULT_EVENT_TYPES, DEFAULT_ABSENCE_TYPES
+
+
+def _default_typedefs(rows):
+    return tuple(TypeDef(**r) for r in rows)
 
 
 @pytest.fixture
@@ -22,6 +27,8 @@ def cfg() -> Config:
         ],
         excluded={"Grace Hughes", "Hassan Ibrahim"},
         name_aliases={},
+        event_types=_default_typedefs(DEFAULT_EVENT_TYPES),
+        absence_types=_default_typedefs(DEFAULT_ABSENCE_TYPES),
     )
 
 

@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from sprint_pulse.config import Config, JiraConfig, normalize_site
+from sprint_pulse.config import Config, JiraConfig, TypeDef, normalize_site
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.services import secrets
+from sprint_pulse.services import secrets, type_service
 
 
 def get_settings(session: Session) -> m.Settings:
@@ -46,6 +46,15 @@ def build_config_from_db(session: Session) -> Config:
         if alias.target_member_id in by_id
     }
 
+    event_types = tuple(
+        TypeDef(t.key, t.label, t.abbreviation, t.color, t.sort_order)
+        for t in type_service.list_event_types(session)
+    )
+    absence_types = tuple(
+        TypeDef(t.key, t.label, t.abbreviation, t.color, t.sort_order)
+        for t in type_service.list_absence_types(session)
+    )
+
     return Config(
         working_days_per_sprint=settings.working_days_per_sprint,
         jira=JiraConfig(site=settings.jira_site, board=settings.jira_board),
@@ -53,6 +62,8 @@ def build_config_from_db(session: Session) -> Config:
         excluded=excluded,
         name_aliases=aliases,
         team_name=settings.team_name or "My Team",
+        event_types=event_types,
+        absence_types=absence_types,
     )
 
 

@@ -156,6 +156,26 @@ def test_sprint_detail_lists_custom_event_type():
     assert '<option value="ga">Target release</option>' in page.text
 
 
+def test_full_html_css_is_data_driven():
+    from datetime import date
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc, config_service as cfgsvc, sprint_service as spsvc
+    from sprint_pulse.services.sprint_service import build_dashboard_data
+    from sprint_pulse.render import render_full_html
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        cfgsvc.add_member(s, "Alice Anderson")
+        spsvc.create_sprint(s, "2026-16", date(2026, 4, 16), date(2026, 4, 29))
+        tsvc.create_absence_type(s, "Jury Duty", "J", "#A0CBE8")
+        cfg = cfgsvc.build_config_from_db(s)
+        data = build_dashboard_data(s, cfg)
+    html = render_full_html(data, cfg)
+    assert "#A0CBE8" in html          # custom type color injected into generated CSS
+    assert "Jury Duty" in html        # custom type appears in the legend
+    assert "td.jury-duty" in html     # generated per-type CSS rule by key
+
+
 def test_set_days_accepts_custom_absence_type_rejects_unknown():
     from datetime import date
     from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope

@@ -8,6 +8,7 @@ from sprint_pulse.errors import ValidationError
 from sprint_pulse.migrate import import_yaml
 from sprint_pulse.services import config_service as cfgsvc
 from sprint_pulse.services import time_off_service as tos
+from sprint_pulse.services import type_service as tsvc
 
 
 @pytest.fixture
@@ -80,7 +81,8 @@ def test_build_month_grid_marks_weekends_and_types(engine):
     with session_scope(engine) as s:
         aid = _alice(s).id
         tos.set_days(s, aid, [date(2026, 7, 20)], "pto", "")
-        grid = tos.build_month_grid(2026, 7, tos.member_calendar(s, aid, 2026, 7))
+        letters = {t.key: t.abbreviation for t in tsvc.list_absence_types(s)}
+        grid = tos.build_month_grid(2026, 7, tos.member_calendar(s, aid, 2026, 7), letters)
     cells = [c for week in grid for c in week]
     marked = next(c for c in cells if c["date"] == date(2026, 7, 20))
     assert marked["type"] == "pto" and marked["letter"] == "P" and marked["in_month"]

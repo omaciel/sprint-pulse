@@ -23,22 +23,64 @@ def sprint_display(sprint: Sprint) -> str:
     return sprint.label or sprint.id
 
 
+def _text_on(bg_hex: str) -> str:
+    """Readable black/white text for a hex background (per-channel luminance)."""
+    h = bg_hex.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    luma = 0.299 * r + 0.587 * g + 0.114 * b
+    return "#111827" if luma > 150 else "#ffffff"
+
+
+def _type_css(absence_types, event_types) -> str:
+    rules = []
+    for t in absence_types:
+        rules.append(f".swatch.{t.key} {{ background: {t.color}; }}")
+        rules.append(f"td.{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
+    for t in event_types:
+        rules.append(f".swatch.{t.key} {{ background: {t.color}; }}")
+        rules.append(f"td.release.{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
+    return "\n".join(rules)
+
+
+def calendar_type_css(absence_types) -> str:
+    """Per-type backgrounds for the member-calendar grid + paint chips.
+
+    The management calendar reuses the same DB-driven type colors as the
+    dashboard heatmap, so custom absence types are colored too (not just the
+    legacy hard-coded five)."""
+    rules = []
+    for t in absence_types:
+        text = _text_on(t.color)
+        rules.append(f".cal-cell.{t.key} {{ background: {t.color}; color: {text}; }}")
+        rules.append(f".chip.{t.key} {{ background: {t.color}; color: {text}; }}")
+    return "\n".join(rules)
+
+
+def _legend_html(absence_types, event_types) -> str:
+    def items(types):
+        return "\n".join(
+            f'<div class="legend-item"><div class="swatch {t.key}"></div> '
+            f'{esc(t.abbreviation)} — {esc(t.label)}</div>'
+            for t in sorted(types, key=lambda t: t.sort_order)
+        )
+    return (
+        '<div class="legend">'
+        '<div class="legend-group"><span class="group-label">Time off</span>'
+        + items(absence_types)
+        + '<div class="legend-item"><div class="swatch excluded"></div> Excluded (not counted)</div>'
+        + '</div><div class="legend-divider"></div>'
+        '<div class="legend-group"><span class="group-label">Releases</span>'
+        + items(event_types)
+        + '</div></div>'
+    )
+
+
 CSS = """:root {
   --bg: #f7f8fa;
   --card: #ffffff;
   --border: #e5e7eb;
   --text: #111827;
   --muted: #6b7280;
-  --pto: #fca5a5;
-  --pto-text: #7f1d1d;
-  --holiday: #93c5fd;
-  --holiday-text: #1e3a8a;
-  --partial: #fcd34d;
-  --partial-text: #78350f;
-  --tentative: repeating-linear-gradient(45deg, #fde68a, #fde68a 4px, #fef3c7 4px, #fef3c7 8px);
-  --tentative-text: #78350f;
-  --company: #c4b5fd;
-  --company-text: #4c1d95;
 }
 * { box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -49,17 +91,7 @@ h1 { margin: 0 0 4px; font-size: 24px; }
   background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border); }
-.swatch.pto { background: var(--pto); }
-.swatch.holiday { background: var(--holiday); }
-.swatch.partial { background: var(--partial); }
-.swatch.tentative { background: var(--tentative); }
-.swatch.company { background: var(--company); }
 .swatch.excluded { background: #e5e7eb; }
-.swatch.tags { background: #1d4ed8; }
-.swatch.gono { background: #b45309; }
-.swatch.ga { background: #047857; }
-.swatch.freeze { background: #6b7280; }
-.swatch.test { background: #7c3aed; }
 .legend-group { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 .legend-group .group-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
   color: var(--muted); font-weight: 600; margin-right: 4px; }
@@ -86,20 +118,10 @@ tfoot td { background: #f9fafb; font-weight: 600; }
 tfoot td.zero { color: #d1d5db; }
 tfoot td.peak { background: #fef3c7; color: #92400e; }
 td.cell { font-weight: 600; font-size: 11px; }
-td.pto { background: var(--pto); color: var(--pto-text); }
-td.holiday { background: var(--holiday); color: var(--holiday-text); }
-td.partial { background: var(--partial); color: var(--partial-text); }
-td.tentative { background: var(--tentative); color: var(--tentative-text); }
-td.company { background: var(--company); color: var(--company-text); }
 td.excluded { background: #e5e7eb; }
 tr.excluded-row td.name { color: var(--muted); font-style: italic; }
 .excluded-badge { color: #9ca3af; font-size: 11px; font-weight: 400; margin-left: 4px; }
 td.release { background: #1f2937; color: #f9fafb; font-weight: 700; font-size: 11px; }
-td.release.ga { background: #047857; }
-td.release.tags { background: #1d4ed8; }
-td.release.gono { background: #b45309; }
-td.release.freeze { background: #6b7280; }
-td.release.test { background: #7c3aed; }
 tr.release-row td.name { font-style: italic; color: var(--muted); font-size: 12px; background: #f9fafb; }
 tr.release-row td { border-bottom: 2px solid var(--border); }
 td.total { font-weight: 700; background: #f9fafb; }
@@ -148,35 +170,7 @@ main > .subtitle { margin: 0 0 24px; font-size: 13px; color: var(--muted); }
 section.sprint { margin-bottom: 0; }"""
 
 
-LEGEND = """<div class="legend">
-  <div class="legend-group">
-    <span class="group-label">Time off</span>
-    <div class="legend-item"><div class="swatch pto"></div> P — PTO</div>
-    <div class="legend-item"><div class="swatch holiday"></div> H — Regional / National holiday</div>
-    <div class="legend-item"><div class="swatch company"></div> C — Company holiday</div>
-    <div class="legend-item"><div class="swatch partial"></div> ~ — Partial availability</div>
-    <div class="legend-item"><div class="swatch tentative"></div> ? — Tentative</div>
-    <div class="legend-item"><div class="swatch excluded"></div> Excluded (not counted)</div>
-  </div>
-  <div class="legend-divider"></div>
-  <div class="legend-group">
-    <span class="group-label">Releases</span>
-    <div class="legend-item"><div class="swatch tags"></div> T — Git tags due</div>
-    <div class="legend-item"><div class="swatch gono"></div> G — Go/No-Go</div>
-    <div class="legend-item"><div class="swatch ga"></div> R — Target release</div>
-    <div class="legend-item"><div class="swatch freeze"></div> F — Release freeze</div>
-    <div class="legend-item"><div class="swatch test"></div> X — Testathon</div>
-  </div>
-</div>"""
-
-
 DOW_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-TYPE_LETTERS = {"pto": "P", "holiday": "H", "company": "C", "partial": "~", "tentative": "?"}
-TYPE_TITLES = {
-    "pto": "PTO", "holiday": "Holiday", "company": "Company holiday",
-    "partial": "Partially available", "tentative": "Tentative",
-}
-KIND_LETTERS = {"tags": "T", "gono": "G", "ga": "R", "freeze": "F", "test": "X"}
 MONTH_ABBR = {
     1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
     7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
@@ -191,14 +185,21 @@ def derive_sprint_notes(sprint: Sprint) -> list[str]:
     return [f"{e.title} — {fmt_date(e.date)}" for e in sprint.events]
 
 
-def _render_cell(person: str, d: date, by_person: dict, cfg: Config) -> tuple[str, int]:
+def _render_cell(
+    person: str,
+    d: date,
+    by_person: dict,
+    cfg: Config,
+    abs_letter: dict,
+    abs_title: dict,
+) -> tuple[str, int]:
     if person in cfg.excluded:
         entries = by_person.get(person, {}).get(d, [])
         if entries:
             e = entries[0]
             cls = e.type
-            letter = TYPE_LETTERS.get(cls, "?")
-            title = e.notes or TYPE_TITLES[cls]
+            letter = abs_letter.get(cls, "?")
+            title = e.notes or abs_title.get(cls, cls)
             return f'<td class="cell {cls}" title="{esc(title)}">{letter}</td>', 0
         return '<td class="excluded" title="Excluded from capacity"></td>', 0
     entries = by_person.get(person, {}).get(d, [])
@@ -206,8 +207,8 @@ def _render_cell(person: str, d: date, by_person: dict, cfg: Config) -> tuple[st
         return "<td></td>", 0
     e = entries[0]
     cls = e.type
-    letter = TYPE_LETTERS.get(cls, "?")
-    title = e.notes or TYPE_TITLES[cls]
+    letter = abs_letter.get(cls, "?")
+    title = e.notes or abs_title.get(cls, cls)
     return f'<td class="cell {cls}" title="{esc(title)}">{letter}</td>', 1
 
 
@@ -219,6 +220,10 @@ def render_sprint(
 ) -> tuple[str, dict[str, int]]:
     days = working_days(sprint.start, sprint.end)
     day_index = {d: i for i, d in enumerate(days)}
+
+    abs_letter = {t.key: t.abbreviation for t in cfg.absence_types}
+    abs_title = {t.key: t.label for t in cfg.absence_types}
+    ev_letter = {t.key: t.abbreviation for t in cfg.event_types}
 
     by_person: dict[str, dict[date, list[TimeOffEntry]]] = {}
     for e in sprint.time_off:
@@ -236,7 +241,7 @@ def render_sprint(
         if col is None:
             continue
         sub = ev.kind
-        letter = KIND_LETTERS[ev.kind]
+        letter = ev_letter.get(ev.kind, "•")
         rel_cells[col] = f'<td class="release {sub}" title="{esc(ev.title)}">{letter}</td>'
     rows_html.append(
         '<tr class="release-row"><td class="name">Releases</td>'
@@ -249,7 +254,7 @@ def render_sprint(
         person_total = 0
         cells_html: list[str] = []
         for i, d in enumerate(days):
-            cell_html, contrib = _render_cell(person, d, by_person, cfg)
+            cell_html, contrib = _render_cell(person, d, by_person, cfg, abs_letter, abs_title)
             cells_html.append(cell_html)
             if person not in cfg.excluded:
                 person_total += contrib
@@ -410,6 +415,9 @@ def render_full_html(
     sprints_asc = sorted(sprints_with_data, key=lambda t: (t[0].start, t[0].end, t[0].id))
     sprints_desc = list(reversed(sprints_asc))
 
+    type_css = _type_css(cfg.absence_types, cfg.event_types)
+    legend = _legend_html(cfg.absence_types, cfg.event_types)
+
     sprint_html_by_id: dict[str, str] = {}
     days_out_by_sprint: dict[str, dict[str, int]] = {}
     for sprint, metrics, state in sprints_asc:
@@ -462,7 +470,8 @@ def render_full_html(
 <head>
 <meta charset="UTF-8">
 <title>{esc(cfg.team_name)} Team — Time Off ({title_range}, {title_year})</title>
-<style>{CSS}</style>
+<style>{CSS}
+{type_css}</style>
 </head>
 <body>
 <div class="layout">
@@ -479,7 +488,7 @@ def render_full_html(
       <button class="summary-link" data-sprint="__summary__">All sprints summary</button>
     </nav>
     <h2 class="section-label">Legend</h2>
-    {LEGEND}
+    {legend}
   </aside>
   <main>
     <h1>{esc(cfg.team_name)} Team — Time Off</h1>

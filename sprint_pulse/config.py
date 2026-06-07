@@ -37,6 +37,15 @@ class JiraConfig:
 
 
 @dataclass(frozen=True)
+class TypeDef:
+    key: str
+    label: str
+    abbreviation: str
+    color: str
+    sort_order: int = 0
+
+
+@dataclass(frozen=True)
 class Config:
     working_days_per_sprint: int
     jira: JiraConfig
@@ -45,6 +54,10 @@ class Config:
     name_aliases: dict[str, str]
     # Team name shown in the page/sidebar headers and used as the Jira sprint-name prefix when matching the board.
     team_name: str = "My Team"
+    # Event/absence type vocabularies (key/label/abbreviation/color), hydrated
+    # from the DB; the renderer derives CSS, cell letters, and the legend from these.
+    event_types: tuple[TypeDef, ...] = ()
+    absence_types: tuple[TypeDef, ...] = ()
 
     @property
     def effective(self) -> list[str]:
