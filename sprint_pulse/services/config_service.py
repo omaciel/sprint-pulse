@@ -37,7 +37,7 @@ def build_config_from_db(session: Session) -> Config:
     settings = get_settings(session)
     members = list_members(session)
     roster = [member.name for member in members]
-    orchestration = {member.name for member in members if member.is_orchestration}
+    excluded = {member.name for member in members if member.is_excluded}
 
     by_id = {member.id: member.name for member in members}
     aliases = {
@@ -50,7 +50,7 @@ def build_config_from_db(session: Session) -> Config:
         working_days_per_sprint=settings.working_days_per_sprint,
         jira=JiraConfig(site=settings.jira_site, board=settings.jira_board),
         roster=roster,
-        orchestration=orchestration,
+        excluded=excluded,
         name_aliases=aliases,
         team_name=settings.team_name or "My Team",
     )
@@ -114,7 +114,7 @@ def get_member(session: Session, member_id: int) -> m.TeamMember:
     return _get_member(session, member_id)
 
 
-def add_member(session: Session, name: str, *, is_orchestration: bool = False) -> m.TeamMember:
+def add_member(session: Session, name: str, *, is_excluded: bool = False) -> m.TeamMember:
     name = (name or "").strip()
     if not name:
         raise ValidationError("name is required", field="name")
@@ -123,7 +123,7 @@ def add_member(session: Session, name: str, *, is_orchestration: bool = False) -
     # max(sort_order)+1, not count: a prior removal would otherwise collide.
     existing = list_members(session)
     next_order = (max((member.sort_order for member in existing), default=-1)) + 1
-    member = m.TeamMember(name=name, is_orchestration=is_orchestration, sort_order=next_order)
+    member = m.TeamMember(name=name, is_excluded=is_excluded, sort_order=next_order)
     session.add(member)
     session.flush()
     return member
@@ -142,9 +142,9 @@ def rename_member(session: Session, member_id: int, new_name: str) -> m.TeamMemb
     return member
 
 
-def toggle_orchestration(session: Session, member_id: int) -> m.TeamMember:
+def toggle_excluded(session: Session, member_id: int) -> m.TeamMember:
     member = _get_member(session, member_id)
-    member.is_orchestration = not member.is_orchestration
+    member.is_excluded = not member.is_excluded
     session.add(member)
     return member
 

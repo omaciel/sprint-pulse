@@ -20,7 +20,7 @@ def cfg() -> Config:
             "Grace Hughes",
             "Hassan Ibrahim",
         ],
-        orchestration={"Grace Hughes", "Hassan Ibrahim"},
+        excluded={"Grace Hughes", "Hassan Ibrahim"},
         name_aliases={},
     )
 
@@ -61,13 +61,14 @@ def test_render_sprint_includes_event_letters(cfg: Config) -> None:
     assert ">R<" in html  # GA release letter
 
 
-def test_render_sprint_orchestration_marked_external(cfg: Config) -> None:
+def test_render_sprint_excluded_marked_and_uncounted(cfg: Config) -> None:
     sprint = _minimal_sprint()
-    html, _ = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
-    assert 'title="On Orchestration"' in html
+    html, days_out = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
+    assert 'class="excluded"' in html or 'excluded-row' in html
+    assert 'title="Excluded from capacity"' in html
 
 
-def test_render_sprint_days_out_excludes_orchestration(cfg: Config) -> None:
+def test_render_sprint_days_out_excludes_excluded(cfg: Config) -> None:
     sprint = _minimal_sprint()
     _, days_out = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
     assert days_out["Alice Anderson"] == 1

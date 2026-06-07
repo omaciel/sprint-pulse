@@ -25,16 +25,16 @@ def sprints_dir(valid_dir):
 def test_import_counts(engine, config_path, sprints_dir):
     counts = import_yaml(engine, config_path, sprints_dir)
     assert counts["members"] == 11
-    assert counts["orchestration"] == 2
+    assert counts["excluded"] == 2
     assert counts["aliases"] == 4
     assert counts["sprints"] == 2  # 2026-16, 2026-18 (archive/ ignored)
 
 
-def test_orchestration_flags_persist(engine, config_path, sprints_dir):
+def test_excluded_flags_persist(engine, config_path, sprints_dir):
     import_yaml(engine, config_path, sprints_dir)
     with session_scope(engine) as s:
         orch = s.exec(
-            select(m.TeamMember).where(m.TeamMember.is_orchestration == True)  # noqa: E712
+            select(m.TeamMember).where(m.TeamMember.is_excluded == True)  # noqa: E712
         ).all()
         names = {member.name for member in orch}
     assert names == {"Grace Hughes", "Hassan Ibrahim"}
@@ -104,7 +104,7 @@ def test_legacy_timeoff_is_flattened_and_dropped():
     eng = get_engine(":memory:")
     # Build the LEGACY schema by hand (raw SQL, so the test survives model removal).
     with eng.begin() as conn:
-        conn.exec_driver_sql("CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, is_orchestration BOOLEAN, sort_order INTEGER)")
+        conn.exec_driver_sql("CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, is_excluded BOOLEAN, sort_order INTEGER)")
         conn.exec_driver_sql("INSERT INTO teammember VALUES (1, 'Alice', 0, 0)")
         conn.exec_driver_sql("CREATE TABLE timeoff (id INTEGER PRIMARY KEY, sprint_id VARCHAR, member_id INTEGER, notes VARCHAR, type VARCHAR)")
         conn.exec_driver_sql("CREATE TABLE timeoffday (id INTEGER PRIMARY KEY, time_off_id INTEGER, date DATE)")
@@ -151,7 +151,7 @@ def test_yaml_import_derives_slug_from_label(tmp_path):
           - Alice Anderson
           - Bruno Costa
 
-        orchestration:
+        excluded:
           - Bruno Costa
 
         name_aliases: {}

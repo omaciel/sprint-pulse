@@ -54,7 +54,7 @@ h1 { margin: 0 0 4px; font-size: 24px; }
 .swatch.partial { background: var(--partial); }
 .swatch.tentative { background: var(--tentative); }
 .swatch.company { background: var(--company); }
-.swatch.external { background: #e5e7eb; }
+.swatch.excluded { background: #e5e7eb; }
 .swatch.tags { background: #1d4ed8; }
 .swatch.gono { background: #b45309; }
 .swatch.ga { background: #047857; }
@@ -91,8 +91,8 @@ td.holiday { background: var(--holiday); color: var(--holiday-text); }
 td.partial { background: var(--partial); color: var(--partial-text); }
 td.tentative { background: var(--tentative); color: var(--tentative-text); }
 td.company { background: var(--company); color: var(--company-text); }
-td.external { background: #e5e7eb; }
-tr.external-row td.name { color: var(--muted); font-style: italic; }
+td.excluded { background: #e5e7eb; }
+tr.excluded-row td.name { color: var(--muted); font-style: italic; }
 .orch { color: #9ca3af; font-size: 11px; font-weight: 400; margin-left: 4px; }
 td.release { background: #1f2937; color: #f9fafb; font-weight: 700; font-size: 11px; }
 td.release.ga { background: #047857; }
@@ -156,7 +156,7 @@ LEGEND = """<div class="legend">
     <div class="legend-item"><div class="swatch company"></div> C — Company holiday</div>
     <div class="legend-item"><div class="swatch partial"></div> ~ — Partial availability</div>
     <div class="legend-item"><div class="swatch tentative"></div> ? — Tentative</div>
-    <div class="legend-item"><div class="swatch external"></div> On Orchestration (not counted)</div>
+    <div class="legend-item"><div class="swatch excluded"></div> Excluded (not counted)</div>
   </div>
   <div class="legend-divider"></div>
   <div class="legend-group">
@@ -192,7 +192,7 @@ def derive_sprint_notes(sprint: Sprint) -> list[str]:
 
 
 def _render_cell(person: str, d: date, by_person: dict, cfg: Config) -> tuple[str, int]:
-    if person in cfg.orchestration:
+    if person in cfg.excluded:
         entries = by_person.get(person, {}).get(d, [])
         if entries:
             e = entries[0]
@@ -200,7 +200,7 @@ def _render_cell(person: str, d: date, by_person: dict, cfg: Config) -> tuple[st
             letter = TYPE_LETTERS.get(cls, "?")
             title = e.notes or TYPE_TITLES[cls]
             return f'<td class="cell {cls}" title="{esc(title)}">{letter}</td>', 0
-        return '<td class="external" title="On Orchestration"></td>', 0
+        return '<td class="excluded" title="Excluded from capacity"></td>', 0
     entries = by_person.get(person, {}).get(d, [])
     if not entries:
         return "<td></td>", 0
@@ -251,11 +251,11 @@ def render_sprint(
         for i, d in enumerate(days):
             cell_html, contrib = _render_cell(person, d, by_person, cfg)
             cells_html.append(cell_html)
-            if person not in cfg.orchestration:
+            if person not in cfg.excluded:
                 person_total += contrib
                 day_totals[i] += contrib
         days_out_by_person[person] = person_total
-        if person in cfg.orchestration:
+        if person in cfg.excluded:
             total_cell = '<td class="total zero">0</td>'
         elif person_total == 0:
             total_cell = '<td class="total zero">0</td>'
@@ -353,14 +353,14 @@ def render_summary(
             sprint_totals[i] += dpo.get(p, 0)
 
     active = sorted(
-        (p for p in cfg.roster if p not in cfg.orchestration),
+        (p for p in cfg.roster if p not in cfg.excluded),
         key=lambda p: -person_totals[p],
     )
-    orch = [p for p in cfg.roster if p in cfg.orchestration]
+    orch = [p for p in cfg.roster if p in cfg.excluded]
 
     rows: list[str] = []
     for p in active + orch:
-        is_orch = p in cfg.orchestration
+        is_orch = p in cfg.excluded
         cells: list[str] = []
         for i, dpo in enumerate(per_sprint_days_out):
             n = 0 if is_orch else dpo.get(p, 0)
@@ -371,9 +371,9 @@ def render_summary(
             if total == 0 else f'<td class="total">{total}</td>'
         )
         name_html = (
-            f'{esc(p)} <span class="orch">(Orchestration)</span>' if is_orch else esc(p)
+            f'{esc(p)} <span class="orch">(Excluded)</span>' if is_orch else esc(p)
         )
-        tr_class = ' class="external-row"' if is_orch else ""
+        tr_class = ' class="excluded-row"' if is_orch else ""
         rows.append(
             f'<tr{tr_class}><td class="name">{name_html}</td>'
             + "".join(cells) + total_cell + "</tr>"

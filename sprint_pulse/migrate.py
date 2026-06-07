@@ -64,7 +64,7 @@ def import_yaml(
         for order, name in enumerate(cfg.roster):
             member = m.TeamMember(
                 name=name,
-                is_orchestration=name in cfg.orchestration,
+                is_excluded=name in cfg.excluded,
                 sort_order=order,
             )
             session.add(member)
@@ -102,7 +102,7 @@ def import_yaml(
 
     return {
         "members": len(cfg.roster),
-        "orchestration": len(cfg.orchestration),
+        "excluded": len(cfg.excluded),
         "aliases": len(cfg.name_aliases),
         "sprints": len(sprints),
         "events": n_events,

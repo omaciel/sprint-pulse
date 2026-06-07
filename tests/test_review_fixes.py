@@ -22,7 +22,7 @@ def _cfg(team_name="Wisdom"):
         working_days_per_sprint=10,
         jira=JiraConfig(site="x", board="1"),
         roster=["Alice Anderson", "Grace Hughes"],
-        orchestration={"Grace Hughes"},
+        excluded={"Grace Hughes"},
         name_aliases={},
         team_name=team_name,
     )
@@ -35,7 +35,7 @@ def test_member_name_is_escaped_in_render():
         working_days_per_sprint=10,
         jira=JiraConfig(site="x", board="1"),
         roster=["<script>alert(1)</script>", "Grace Hughes"],
-        orchestration={"Grace Hughes"},
+        excluded={"Grace Hughes"},
         name_aliases={},
     )
     sprint = Sprint(id="2026-16", start=date(2026, 4, 16), end=date(2026, 4, 29),

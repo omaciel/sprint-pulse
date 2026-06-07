@@ -41,14 +41,14 @@ class Config:
     working_days_per_sprint: int
     jira: JiraConfig
     roster: list[str]
-    orchestration: set[str]
+    excluded: set[str]
     name_aliases: dict[str, str]
     # Team name shown in the page/sidebar headers and used as the Jira sprint-name prefix when matching the board.
     team_name: str = "My Team"
 
     @property
     def effective(self) -> list[str]:
-        return [n for n in self.roster if n not in self.orchestration]
+        return [n for n in self.roster if n not in self.excluded]
 
     @property
     def capacity(self) -> int:
@@ -74,10 +74,10 @@ def load_config(path: Path | str) -> Config:
             raise ConfigError(f'{path.name}: duplicate roster entry "{name}"')
         seen.add(name)
 
-    orchestration = set(raw.get("orchestration") or [])
-    for name in orchestration:
+    excluded = set(raw.get("excluded") or [])
+    for name in excluded:
         if name not in seen:
-            raise ConfigError(f'{path.name}: orchestration member "{name}" not in roster')
+            raise ConfigError(f'{path.name}: excluded member "{name}" not in roster')
 
     aliases = dict(raw.get("name_aliases") or {})
     for src, target in aliases.items():
@@ -91,7 +91,7 @@ def load_config(path: Path | str) -> Config:
         working_days_per_sprint=int(raw["working_days_per_sprint"]),
         jira=jira,
         roster=list(roster),
-        orchestration=orchestration,
+        excluded=excluded,
         name_aliases=aliases,
         team_name=str(raw.get("team_name") or "My Team"),
     )

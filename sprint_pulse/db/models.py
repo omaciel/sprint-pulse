@@ -47,7 +47,7 @@ class Settings(SQLModel, table=True):
 class TeamMember(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
-    is_orchestration: bool = False
+    is_excluded: bool = False
     sort_order: int = 0
 
 

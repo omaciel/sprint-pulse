@@ -32,7 +32,7 @@ def test_build_config_from_db_matches_yaml(engine):
     with session_scope(engine) as s:
         cfg = cfgsvc.build_config_from_db(s)
     assert len(cfg.roster) == 11
-    assert cfg.orchestration == {"Grace Hughes", "Hassan Ibrahim"}
+    assert cfg.excluded == {"Grace Hughes", "Hassan Ibrahim"}
     assert cfg.capacity == 90  # (11 - 2) * 10
     assert cfg.name_aliases["Alyce Anderson"] == "Alice Anderson"
 
@@ -49,6 +49,17 @@ def test_add_member_appends(engine):
     with session_scope(engine) as s:
         cfg = cfgsvc.build_config_from_db(s)
     assert "New Person" in cfg.roster
+
+
+def test_toggle_excluded_flips_flag(engine):
+    from sprint_pulse.services import config_service as cfgsvc
+    with session_scope(engine) as s:
+        m1 = cfgsvc.add_member(s, "Zoe Zimmer")
+        assert m1.is_excluded is False
+        cfgsvc.toggle_excluded(s, m1.id)
+    with session_scope(engine) as s:
+        member = next(mm for mm in cfgsvc.list_members(s) if mm.name == "Zoe Zimmer")
+        assert member.is_excluded is True
 
 
 def test_alias_target_must_exist(engine):

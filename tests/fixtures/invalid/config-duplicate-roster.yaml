@@ -1,5 +1,5 @@
 working_days_per_sprint: 10
 jira: {site: x, board: "1"}
 roster: [Alice, Bob, Alice]
-orchestration: []
+excluded: []
 name_aliases: {}

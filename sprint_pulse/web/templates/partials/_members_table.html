@@ -8,14 +8,14 @@
     <tr>
       <td><a class="link" href="/members/{{ member.id }}">{{ member.name }}</a></td>
       <td>
-        {% if member.is_orchestration %}<span class="pill orch">Orchestration</span>
+        {% if member.is_excluded %}<span class="pill orch">Excluded</span>
         {% else %}<span class="muted">Capacity</span>{% endif %}
       </td>
       <td style="text-align:right; white-space:nowrap">
         <button class="secondary"
                 hx-post="/members/{{ member.id }}/toggle"
                 hx-target="#members-table" hx-swap="innerHTML">
-          {% if member.is_orchestration %}Make capacity{% else %}Make orchestration{% endif %}
+          {% if member.is_excluded %}Include{% else %}Exclude{% endif %}
         </button>
         <button class="danger"
                 hx-post="/members/{{ member.id }}/delete"
@@ -29,5 +29,5 @@
   </tbody>
 </table>
 <p class="muted" style="margin-top:10px">
-  {{ members | length }} members · {{ members | selectattr("is_orchestration") | list | length }} on orchestration (excluded from capacity)
+  {{ members | length }} members · {{ members | selectattr("is_excluded") | list | length }} excluded from capacity
 </p>

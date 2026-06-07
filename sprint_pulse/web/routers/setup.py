@@ -109,12 +109,12 @@ def team_page(request: Request, session: Session = Depends(get_session)):
 def team_add(
     request: Request,
     name: str = Form(...),
-    is_orchestration: bool = Form(False),
+    is_excluded: bool = Form(False),
     session: Session = Depends(get_session),
 ):
     error = ""
     try:
-        config_service.add_member(session, name, is_orchestration=is_orchestration)
+        config_service.add_member(session, name, is_excluded=is_excluded)
     except ValidationError as e:
         session.rollback()
         error = e.display()

@@ -14,17 +14,17 @@ def test_load_valid_config(valid_dir: Path) -> None:
     assert cfg.jira.board == "1234"
     assert "Alice Anderson" in cfg.roster
     assert cfg.roster.index("Alice Anderson") == 0
-    assert cfg.orchestration == {"Grace Hughes", "Hassan Ibrahim"}
+    assert cfg.excluded == {"Grace Hughes", "Hassan Ibrahim"}
     assert cfg.name_aliases["Alyce Anderson"] == "Alice Anderson"
 
 
 def test_capacity_property(valid_dir: Path) -> None:
     cfg = load_config(valid_dir / "config.yaml")
-    # 11 roster - 2 orchestration = 9 effective; 9 * 10 = 90
+    # 11 roster - 2 excluded = 9 effective; 9 * 10 = 90
     assert cfg.capacity == 90
 
 
-def test_effective_excludes_orchestration(valid_dir: Path) -> None:
+def test_effective_excludes_excluded(valid_dir: Path) -> None:
     cfg = load_config(valid_dir / "config.yaml")
     assert "Grace Hughes" not in cfg.effective
     assert "Alice Anderson" in cfg.effective
@@ -33,7 +33,7 @@ def test_effective_excludes_orchestration(valid_dir: Path) -> None:
 @pytest.mark.parametrize(
     "fixture, expected_substring",
     [
-        ("config-orch-not-in-roster.yaml", "orchestration member \"Carol\" not in roster"),
+        ("config-orch-not-in-roster.yaml", "excluded member \"Carol\" not in roster"),
         ("config-alias-target-not-in-roster.yaml", "alias target \"Carol\" not in roster"),
         ("config-duplicate-roster.yaml", "duplicate roster entry \"Alice\""),
         ("config-missing-roster.yaml", "missing required field \"roster\""),
