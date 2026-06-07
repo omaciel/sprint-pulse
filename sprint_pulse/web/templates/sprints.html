@@ -7,7 +7,7 @@
   <tbody>
     {% for s in sprints %}
     <tr>
-      <td><a class="link" href="/sprints/{{ s.id }}">{{ s.id }}</a></td>
+      <td><a class="link" href="/sprints/{{ s.id }}">{{ s.label or s.id }}</a></td>
       <td class="muted">{{ s.start }} → {{ s.end }}</td>
       <td><span class="pill {{ s.jira_state }}">{{ s.jira_state }}</span></td>
       <td class="muted">{{ s.done_n }}/{{ s.tot_n }} · {{ s.done_sp }}/{{ s.tot_sp }} SP</td>
@@ -47,8 +47,8 @@
   <form method="post" action="/sprints">
     <div class="row">
       <div>
-        <label for="sprint_id">Sprint id</label>
-        <input type="text" id="sprint_id" name="sprint_id" placeholder="2026-28" required>
+        <label for="label">Sprint name</label>
+        <input type="text" id="label" name="label" placeholder="June 2026" required>
       </div>
       <div>
         <label for="start">Start</label>

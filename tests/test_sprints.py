@@ -1,5 +1,4 @@
 """Sprint loader tests."""
-import shutil
 import warnings
 from datetime import date
 from pathlib import Path
@@ -161,22 +160,14 @@ def test_load_sprints_skips_archive(valid_dir: Path, cfg: Config) -> None:
 
 def test_load_sprints_returns_sorted(valid_dir: Path, cfg: Config) -> None:
     sprints = load_sprints(valid_dir / "sprints_dir", cfg)
-    assert [s.id for s in sprints] == sorted([s.id for s in sprints])
+    assert [(s.start, s.end) for s in sprints] == sorted((s.start, s.end) for s in sprints)
 
 
-def test_id_mismatch_raises_via_directory(tmp_path: Path, invalid_dir: Path, cfg: Config) -> None:
-    """Copy the sprint-id-mismatch fixture into an isolated tmp dir and verify
-    the directory loader catches the filename↔id mismatch.
+def test_duplicate_sprint_slug_raises(cfg: Config) -> None:
+    """The duplicate-slug check engages defensively. Two distinct filenames whose
+    ids slugify to the same value can't realistically occur on disk, so test via
+    the helper.
     """
-    shutil.copy(invalid_dir / "sprint-id-mismatch.yaml", tmp_path / "sprint-id-mismatch.yaml")
-    with pytest.raises(SprintError, match='id "2026-99" does not match filename'):
-        load_sprints(tmp_path, cfg)
-
-
-def test_duplicate_sprint_id_raises(cfg: Config) -> None:
-    """The duplicate-id check engages defensively. Two distinct filenames with
-    the same id can't realistically occur on disk, so test via the helper.
-    """
-    from sprint_pulse.sprints import _check_duplicate_ids
-    with pytest.raises(SprintError, match="Duplicate sprint id 2026-16"):
-        _check_duplicate_ids([("a.yaml", "2026-16"), ("b.yaml", "2026-16")])
+    from sprint_pulse.sprints import _check_duplicate_slugs
+    with pytest.raises(SprintError, match="Duplicate sprint slug 2026-16"):
+        _check_duplicate_slugs([("a.yaml", "2026-16"), ("b.yaml", "2026-16")])

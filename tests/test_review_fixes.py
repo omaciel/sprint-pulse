@@ -58,27 +58,31 @@ def test_notes_are_escaped_in_render():
 
 # --- #3: sprint id must be int-parseable (renderer crash guard) -------------
 
-def test_create_sprint_rejects_unsafe_id():
-    """Ids must be URL/JS-safe (no spaces/quotes/slashes), but need not be numeric."""
+def test_create_sprint_slugifies_unsafe_labels():
+    """Labels need not be URL-safe; the service derives a safe slug id."""
     from sprint_pulse.db.engine import create_db_and_tables
     engine = get_engine(":memory:")
     create_db_and_tables(engine)
     with session_scope(engine) as s:
-        with pytest.raises(ValidationError):
-            spsvc.create_sprint(s, "Q1 sprint", date(2026, 4, 16), date(2026, 4, 29))  # space
+        row = spsvc.create_sprint(s, "Q1 sprint", date(2026, 4, 16), date(2026, 4, 29))
+        assert row.id == "q1-sprint"
+        assert row.label == "Q1 sprint"
     with session_scope(engine) as s:
-        with pytest.raises(ValidationError):
-            spsvc.create_sprint(s, "a/b", date(2026, 4, 16), date(2026, 4, 29))  # slash
+        row = spsvc.create_sprint(s, "a/b", date(2026, 5, 14), date(2026, 5, 27))
+        assert row.id == "a-b"
 
 
 def test_create_sprint_accepts_non_numeric_safe_id():
-    """Sorting is by date now, so a non-numeric id like '2026-Q1' is fine."""
+    """Sorting is by date now, so a non-numeric label like '2026-Q1' is fine;
+    the derived slug id is lowercased ('2026-q1')."""
     from sprint_pulse.db.engine import create_db_and_tables
     engine = get_engine(":memory:")
     create_db_and_tables(engine)
     with session_scope(engine) as s:
-        spsvc.create_sprint(s, "2026-Q1", date(2026, 4, 16), date(2026, 4, 29))
-        assert s.get(__import__("sprint_pulse.db.models", fromlist=["Sprint"]).Sprint, "2026-Q1")
+        row = spsvc.create_sprint(s, "2026-Q1", date(2026, 4, 16), date(2026, 4, 29))
+        assert row.id == "2026-q1"
+        assert row.label == "2026-Q1"
+        assert s.get(m.Sprint, "2026-q1")
 
 
 def test_dashboard_survives_after_valid_ids_only(valid_dir):
@@ -126,14 +130,15 @@ def test_refresh_uses_configured_prefix(seeded_engine, monkeypatch):
     assert result["updated"] == 2
 
 
-def test_refresh_zero_match_reports_error(seeded_engine, monkeypatch):
+def test_refresh_zero_match_is_ok_not_error(seeded_engine, monkeypatch):
     from sprint_pulse.services import refresh
-    # Default prefix "Wisdom" but board returns mismatched names.
+    # Default prefix "Wisdom" but board returns names that match nothing.
     monkeypatch.setattr(jira_service, "make_client", lambda s: _FakeClient(["WIS 2026-16"]))
     with session_scope(seeded_engine) as s:
         result = refresh.refresh_all(s)
-    assert result["status"] == "error"
-    assert "prefix" in result["log"]
+    assert result["status"] == "ok"
+    assert result["updated"] == 0
+    assert "matching" in result["log"].lower()
 
 
 # --- #6: scheduler error is URL-encoded -------------------------------------

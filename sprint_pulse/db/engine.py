@@ -92,7 +92,11 @@ def get_engine(db_path: Path | str | None = None, *, echo: bool = False) -> Engi
 # any missing ones in place so an existing DB file keeps working after upgrade.
 _ADDED_COLUMNS = {
     "settings": [("team_name", "VARCHAR DEFAULT 'Wisdom'")],
-    "sprint": [("archived", "BOOLEAN DEFAULT 0"), ("jira_sprint_id", "INTEGER")],
+    "sprint": [
+        ("archived", "BOOLEAN DEFAULT 0"),
+        ("jira_sprint_id", "INTEGER"),
+        ("label", "VARCHAR DEFAULT ''"),
+    ],
 }
 
 
@@ -103,6 +107,15 @@ def _ensure_columns(engine: Engine) -> None:
             for name, decl in columns:
                 if name not in existing:
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
+
+def _backfill_sprint_labels(engine: Engine) -> None:
+    """Populate Sprint.label from the id for rows created before label existed.
+    Idempotent: once labels are set this UPDATE matches nothing."""
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "UPDATE sprint SET label = id WHERE label IS NULL OR label = ''"
+        )
 
 
 # Higher wins when the same (member, day) carried two types in legacy data.
@@ -154,6 +167,7 @@ def create_db_and_tables(engine: Engine) -> None:
             "SELECT name FROM sqlite_master WHERE type='table'")}
     SQLModel.metadata.create_all(engine)
     _ensure_columns(engine)
+    _backfill_sprint_labels(engine)
     _migrate_legacy_timeoff(engine, pre_existing=pre_existing)
 
 

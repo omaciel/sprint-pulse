@@ -15,7 +15,7 @@ from sprint_pulse.config import load_config
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, session_scope
 from sprint_pulse.services.time_off_service import TYPE_PRIORITY
-from sprint_pulse.sprints import load_sprints
+from sprint_pulse.sprints import load_sprints, slugify
 
 
 class MigrationError(Exception):
@@ -81,10 +81,11 @@ def import_yaml(
         n_events = 0
         day_off: dict[tuple, tuple[str, str]] = {}  # (member_id, date) -> (type, notes)
         for sprint in sprints:
-            session.add(m.Sprint(id=sprint.id, start=sprint.start, end=sprint.end))
+            slug = slugify(sprint.id)
+            session.add(m.Sprint(id=slug, label=sprint.label, start=sprint.start, end=sprint.end))
             for ev in sprint.events:
                 session.add(
-                    m.Event(sprint_id=sprint.id, date=ev.date, kind=ev.kind, title=ev.title)
+                    m.Event(sprint_id=slug, date=ev.date, kind=ev.kind, title=ev.title)
                 )
                 n_events += 1
             for entry in sprint.time_off:

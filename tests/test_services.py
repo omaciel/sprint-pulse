@@ -70,6 +70,54 @@ def test_build_sprints_from_db(engine):
     assert all(isinstance(sp.start, date) for sp in sprints)
 
 
+def test_create_sprint_accepts_free_form_label(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, "June 2026", date(2026, 6, 1), date(2026, 6, 12))
+        assert row.id == "june-2026"
+        assert row.label == "June 2026"
+        assert s.get(m.Sprint, "june-2026") is not None
+
+
+def test_create_sprint_folds_accented_label_to_ascii(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, "Été 2026", date(2026, 6, 1), date(2026, 6, 12))
+        assert row.id == "ete-2026"
+        assert row.label == "Été 2026"
+
+
+def test_create_sprint_handles_leading_dot_label(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, ".NET 2026", date(2026, 6, 1), date(2026, 6, 12))
+        assert row.id == "net-2026"
+        assert row.label == ".NET 2026"
+
+
+def test_create_sprint_preserves_mid_slug_dot(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, "2026.1", date(2026, 6, 1), date(2026, 6, 12))
+        assert row.id == "2026.1"  # dot preserved mid-string
+
+
+def test_create_sprint_rejects_label_that_slugifies_empty(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        with pytest.raises(ValidationError):
+            spsvc.create_sprint(s, "!!!", date(2026, 6, 1), date(2026, 6, 12))
+
+
+def test_create_sprint_rejects_duplicate_slug(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        spsvc.create_sprint(s, "June 2026", date(2026, 6, 1), date(2026, 6, 12))
+    with session_scope(engine) as s:
+        with pytest.raises(ValidationError):
+            spsvc.create_sprint(s, "june 2026", date(2026, 6, 15), date(2026, 6, 26))
+
+
 def test_create_sprint_rejects_end_before_start(engine):
     with session_scope(engine) as s:
         with pytest.raises(ValidationError):

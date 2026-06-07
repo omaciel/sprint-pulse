@@ -23,6 +23,7 @@ from sprint_pulse.sprints import (
     event_kind_error,
     working_day_error,
 )
+from sprint_pulse.sprints import slugify as _slug
 
 
 def sort_key(sprint) -> tuple:
@@ -60,7 +61,14 @@ def _load(session: Session, cfg: Config | None):
             time_off_service.entries_for_sprints(dayoff_rows, member_name, row.start, row.end)
         )
         sprints.append(
-            Sprint(id=row.id, start=row.start, end=row.end, events=events, time_off=time_off)
+            Sprint(
+                id=row.id,
+                label=row.label or row.id,
+                start=row.start,
+                end=row.end,
+                events=events,
+                time_off=time_off,
+            )
         )
     sprints.sort(key=sort_key)
     return sprints, {row.id: row for row in rows}
@@ -105,28 +113,40 @@ def build_dashboard_data(
 _SPRINT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
-def create_sprint(session: Session, sprint_id: str, start: date, end: date) -> m.Sprint:
-    sprint_id = (sprint_id or "").strip()
-    if not sprint_id:
-        raise ValidationError("sprint id is required", field="id")
-    if not _SPRINT_ID_RE.match(sprint_id):
+def slugify_label(label: str) -> str:
+    """URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
+
+    Delegates to the canonical :func:`sprint_pulse.sprints.slugify` so the DB
+    path and the YAML import path can never drift. Kept under this name so
+    existing callers/tests are unaffected.
+    """
+    return _slug(label)
+
+
+def create_sprint(session: Session, label: str, start: date, end: date) -> m.Sprint:
+    label = (label or "").strip()
+    if not label:
+        raise ValidationError("sprint label is required", field="label")
+    slug = slugify_label(label)
+    if not slug or not _SPRINT_ID_RE.match(slug):
         raise ValidationError(
-            f'sprint id "{sprint_id}" may use only letters, numbers, ".", "_", "-" '
-            '(no spaces), e.g. "2026-16"',
-            field="id",
+            f'sprint label "{label}" has no usable letters/numbers for an id',
+            field="label",
         )
     if end < start:
         raise ValidationError(
             f"end ({end.isoformat()}) is before start ({start.isoformat()})", field="end"
         )
-    if session.get(m.Sprint, sprint_id):
-        raise ValidationError(f'sprint "{sprint_id}" already exists', field="id")
+    if session.get(m.Sprint, slug):
+        raise ValidationError(
+            f'a sprint with id "{slug}" already exists (label "{label}")', field="label"
+        )
     if (end - start).days + 1 != 14:
         warnings.warn(
-            f"sprint {sprint_id}: length is {(end - start).days + 1} days (expected 14)",
+            f"sprint {slug}: length is {(end - start).days + 1} days (expected 14)",
             stacklevel=2,
         )
-    sprint = m.Sprint(id=sprint_id, start=start, end=end)
+    sprint = m.Sprint(id=slug, label=label, start=start, end=end)
     session.add(sprint)
     session.flush()
     return sprint
@@ -177,7 +197,8 @@ _ID_IN_NAME = re.compile(r"\d+-\d+")
 
 
 def _slugify(name: str) -> str:
-    """URL/JS-safe id from an arbitrary name: 'Sprint Forty Two' -> 'Sprint-Forty-Two'."""
+    """URL/JS-safe id from an arbitrary name: 'Sprint Forty Two' -> 'Sprint-Forty-Two'.
+    Case-preserving; used only for import-candidate display suggestions (storage uses slugify_label)."""
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-")
     return slug
 
@@ -223,7 +244,10 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
     candidates: list[dict] = []
     for name, info in jira.items():
         suggested = _suggest_sprint_id(name, prefix)
-        imported = info["id"] in existing_jira_ids or (bool(suggested) and suggested in existing_ids)
+        slug_of_suggested = slugify_label(suggested) if suggested else ""
+        imported = info["id"] in existing_jira_ids or (
+            bool(slug_of_suggested) and slug_of_suggested in existing_ids
+        )
         candidates.append(
             {
                 "jira_id": info["id"],
@@ -242,11 +266,12 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
 
 
 def import_jira_sprints(session: Session, selections: list[tuple[int, str]]) -> dict:
-    """Create Sprint rows from (jira_id, chosen_id) selections.
+    """Create Sprint rows from (jira_id, chosen_label) selections.
 
     Matching is by Jira numeric id, so the board's naming is irrelevant. Each
-    chosen_id is validated by create_sprint; rows that already exist, lack Jira
-    dates, or have a bad id are skipped. The Jira id + state are stored.
+    chosen_label is treated as a free-form sprint label; create_sprint derives
+    the slug id and validates it. Rows that already exist, lack Jira dates, or
+    produce an unusable slug are skipped. The Jira id + state are stored.
     """
     client = jira_service.make_client(session)
     if client is None:
@@ -261,13 +286,14 @@ def import_jira_sprints(session: Session, selections: list[tuple[int, str]]) -> 
             skipped.append(chosen_id or str(jira_id))
             continue
         try:
-            # create_sprint validates id shape / dups before any write, so a
-            # failure here leaves earlier creates in this transaction intact.
-            create_sprint(session, chosen_id, info["start"], info["end"])
+            # create_sprint validates the label / derives the slug id and checks
+            # for dups before any write, so a failure here leaves earlier creates
+            # in this transaction intact. It returns the created row (keyed by the
+            # derived slug, which may differ from the chosen label).
+            row = create_sprint(session, chosen_id, info["start"], info["end"])
         except ValidationError:
             skipped.append(chosen_id or str(jira_id))
             continue
-        row = session.get(m.Sprint, chosen_id)
         row.jira_sprint_id = jira_id
         row.jira_state = info.get("state", "future")
         session.add(row)

@@ -86,10 +86,38 @@ def test_delete_member(seeded_client):
     assert "Jack Kelly" not in r.text
 
 
+def test_create_sprint_via_form_uses_label(empty_client):
+    r = empty_client.post(
+        "/sprints",
+        data={"label": "June 2026", "start": "2026-06-01", "end": "2026-06-12"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/sprints/june-2026"
+    detail = empty_client.get(r.headers["location"])
+    assert detail.status_code == 200
+    assert "June 2026" in detail.text
+
+
+def test_create_sprint_blank_label_shows_error():
+    from fastapi.testclient import TestClient
+    from sprint_pulse.web.app import create_app
+    client = TestClient(create_app(":memory:"))
+    r = client.post(
+        "/sprints",
+        data={"label": "   ", "start": "2026-06-01", "end": "2026-06-12"},
+        follow_redirects=False,
+    )
+    # create_sprint strips whitespace -> empty -> ValidationError("sprint label is required")
+    # -> form re-renders with a 200 (no redirect)
+    assert r.status_code == 200
+    assert "sprint label is required" in r.text
+
+
 def test_sprint_detail_renders(seeded_client):
     r = seeded_client.get("/sprints/2026-16")
     assert r.status_code == 200
-    assert "Sprint 2026-16" in r.text
+    assert "2026-16" in r.text
 
 
 def test_add_event_then_appears(seeded_client):

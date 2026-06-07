@@ -42,13 +42,15 @@ def _minimal_sprint() -> Sprint:
                 type="pto",
             ),
         ),
+        label="June 2026",
     )
 
 
-def test_render_sprint_includes_id_and_dates(cfg: Config) -> None:
+def test_render_sprint_includes_label_and_dates(cfg: Config) -> None:
     sprint = _minimal_sprint()
     html, _ = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
-    assert "Wisdom 2026-16" in html
+    assert "June 2026" in html          # the label shows
+    assert "Wisdom 2026-16" not in html  # no team/Jira prefix anymore
     assert "Apr 16" in html
 
 

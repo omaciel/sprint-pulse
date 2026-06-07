@@ -51,7 +51,7 @@ def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
         if row.jira_sprint_id is not None:
             info = by_jira_id.get(row.jira_sprint_id)
         if info is None:
-            info = jira_sprints.get(f"{prefix} {row.id}")
+            info = jira_sprints.get(f"{prefix} {row.label or row.id}")
         if not info:
             continue
         matched += 1
@@ -73,11 +73,8 @@ def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
 
     settings.last_run = now
     if rows and matched == 0:
-        settings.last_status = "error"
-        settings.last_log = (
-            f"No sprints matched the Jira name prefix '{prefix}' "
-            f"(expected names like '{prefix} {rows[0].id}'). Check Settings → team name / board."
-        )
+        settings.last_status = "ok"
+        settings.last_log = "No matching Jira sprints — nothing to update."
     elif metric_failures:
         settings.last_status = "error"
         settings.last_log = (

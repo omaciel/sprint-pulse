@@ -1,6 +1,8 @@
 """Sprint loader: data/sprints/*.yaml -> list[Sprint]."""
 from __future__ import annotations
 
+import re
+import unicodedata
 import warnings
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -11,6 +13,24 @@ from typing import Any
 import yaml
 
 from sprint_pulse.config import Config
+
+
+def slugify(label: str) -> str:
+    """Canonical URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
+
+    This is the single source of truth for slug derivation, shared by the DB
+    service layer (``sprint_service.slugify_label`` delegates here) and the YAML
+    import path. Accented Latin characters are folded to ASCII ('Été' -> 'ete');
+    other non-ASCII characters are dropped. Runs of unsafe chars collapse to one
+    hyphen; leading/trailing hyphens, dots, and underscores are stripped (so
+    '.NET 2026' -> 'net-2026'), while mid-slug dots/underscores are preserved.
+    """
+    ascii_label = (
+        unicodedata.normalize("NFKD", label)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-._")
 
 
 HOLIDAY_KEYWORDS = (
@@ -48,10 +68,7 @@ class Sprint:
     end: date
     events: tuple[Event, ...]
     time_off: tuple[TimeOffEntry, ...]
-
-    @property
-    def name(self) -> str:
-        return f"Wisdom {self.id}"
+    label: str = ""
 
 
 def working_days(start: date, end: date) -> list[date]:
@@ -207,22 +224,16 @@ def load_sprint_file(path: Path | str, cfg: Config) -> Sprint:
     for i, t in enumerate(raw.get("time_off") or []):
         time_off.extend(_validate_time_off(prefix, i, t or {}, start, end, cfg))
 
-    return Sprint(id=sid, start=start, end=end, events=events, time_off=tuple(time_off))
+    return Sprint(id=sid, label=sid, start=start, end=end, events=events, time_off=tuple(time_off))
 
 
-def _check_duplicate_ids(pairs: list[tuple[str, str]]) -> None:
-    """pairs: list of (filename, id). Raises if any id appears twice."""
+def _check_duplicate_slugs(pairs: list[tuple[str, str]]) -> None:
+    """pairs: list of (filename, slug). Raises if any slug appears twice."""
     seen: dict[str, str] = {}
-    for fname, sid in pairs:
-        if sid in seen:
-            raise SprintError(f"Duplicate sprint id {sid} in {seen[sid]} and {fname}")
-        seen[sid] = fname
-
-
-def _check_id_matches_filename(path: Path, sid: str) -> None:
-    """Raises if the sprint file's id field doesn't match its filename stem."""
-    if sid != path.stem:
-        raise SprintError(f'sprints/{path.name}: id "{sid}" does not match filename')
+    for fname, slug in pairs:
+        if slug in seen:
+            raise SprintError(f"Duplicate sprint slug {slug} in {seen[slug]} and {fname}")
+        seen[slug] = fname
 
 
 def load_sprints(directory: Path | str, cfg: Config) -> list[Sprint]:
@@ -231,7 +242,6 @@ def load_sprints(directory: Path | str, cfg: Config) -> list[Sprint]:
     sprints: list[Sprint] = []
     for p in files:
         sprint = load_sprint_file(p, cfg)
-        _check_id_matches_filename(p, sprint.id)
         sprints.append(sprint)
-    _check_duplicate_ids([(p.name, s.id) for p, s in zip(files, sprints)])
+    _check_duplicate_slugs([(p.name, slugify(s.id)) for p, s in zip(files, sprints)])
     return sorted(sprints, key=lambda s: (s.start, s.end, s.id))
