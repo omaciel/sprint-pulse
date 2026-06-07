@@ -216,13 +216,14 @@ before seeding.
 
 ### Management UI
 
-Two CRUD sections — "Event Types" and "Absence Types" — on a settings surface
-(extend the Config page, or a dedicated `/types` page; implementer's choice
-following existing router/template patterns). Each lists current types (swatch +
-label + abbreviation) with add / edit (label, abbreviation, palette color) /
-delete. Delete is blocked while in use, showing the usage count. Forms post to a
-`types` router; errors re-render with a message via the existing `ValidationError`
-→ `e.display()` pattern.
+A **dedicated `/types` page** with two CRUD sections — "Event Types" and "Absence
+Types" — linked from the main nav (alongside Sprints / Team / Config). Each
+section lists current types (swatch + label + abbreviation) with add / edit
+(label, abbreviation, palette color) / delete. Delete is blocked while in use,
+showing the usage count. A new `web/routers/types.py` router serves the page and
+the mutation endpoints; errors re-render with a message via the existing
+`ValidationError` → `e.display()` pattern. Register the router in the app factory
+and add the nav link (`web/nav.py` + base template).
 
 ---
 
