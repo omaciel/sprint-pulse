@@ -38,19 +38,19 @@ def sprints_page(request: Request, session: Session = Depends(get_session)):
 @router.post("/sprints", response_class=HTMLResponse)
 def create_sprint(
     request: Request,
-    sprint_id: str = Form(...),
+    label: str = Form(...),
     start: date = Form(...),
     end: date = Form(...),
     session: Session = Depends(get_session),
 ):
     try:
-        sprint_service.create_sprint(session, sprint_id, start, end)
+        row = sprint_service.create_sprint(session, label, start, end)
     except ValidationError as e:
         session.rollback()
         return templates.TemplateResponse(
             request, "sprints.html", _list_context(session, error=e.display())
         )
-    return RedirectResponse(f"/sprints/{sprint_id}", status_code=303)
+    return RedirectResponse(f"/sprints/{row.id}", status_code=303)
 
 
 _IMPORT_PAGE_SIZE = 25

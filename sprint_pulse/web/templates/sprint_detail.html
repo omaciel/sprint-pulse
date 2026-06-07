@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ sprint.id }} · Sprint Pulse{% endblock %}
+{% block title %}{{ sprint.label or sprint.id }} · Sprint Pulse{% endblock %}
 {% block content %}
 <p><a class="link" href="/sprints">← All sprints</a></p>
-<h1>Sprint {{ sprint.id }}</h1>
+<h1>Sprint {{ sprint.label or sprint.id }}</h1>
 <p class="subtitle">{{ sprint.start }} → {{ sprint.end }} · <span class="pill {{ sprint.jira_state }}">{{ sprint.jira_state }}</span></p>
 
 <div class="card">

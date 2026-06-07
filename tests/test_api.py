@@ -86,6 +86,16 @@ def test_delete_member(seeded_client):
     assert "Jack Kelly" not in r.text
 
 
+def test_create_sprint_via_form_uses_label(empty_client):
+    r = empty_client.post(
+        "/sprints",
+        data={"label": "June 2026", "start": "2026-06-01", "end": "2026-06-12"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/sprints/june-2026"
+
+
 def test_sprint_detail_renders(seeded_client):
     r = seeded_client.get("/sprints/2026-16")
     assert r.status_code == 200
