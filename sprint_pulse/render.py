@@ -160,7 +160,7 @@ LEGEND = """<div class="legend">
   </div>
   <div class="legend-divider"></div>
   <div class="legend-group">
-    <span class="group-label">AAP release</span>
+    <span class="group-label">Releases</span>
     <div class="legend-item"><div class="swatch tags"></div> T — Git tags due</div>
     <div class="legend-item"><div class="swatch gono"></div> G — Go/No-Go</div>
     <div class="legend-item"><div class="swatch ga"></div> R — Target release</div>
@@ -239,7 +239,7 @@ def render_sprint(
         letter = KIND_LETTERS[ev.kind]
         rel_cells[col] = f'<td class="release {sub}" title="{esc(ev.title)}">{letter}</td>'
     rows_html.append(
-        '<tr class="release-row"><td class="name">AAP release</td>'
+        '<tr class="release-row"><td class="name">Releases</td>'
         + "".join(rel_cells)
         + '<td>—</td></tr>'
     )

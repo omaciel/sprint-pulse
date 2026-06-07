@@ -32,7 +32,7 @@ def _minimal_sprint() -> Sprint:
         end=date(2026, 4, 29),
         events=(
             Event(date=date(2026, 4, 17), kind="gono", title="Go/No-Go deadline 4PM EST"),
-            Event(date=date(2026, 4, 22), kind="ga", title="AAP 2.7 GA release"),
+            Event(date=date(2026, 4, 22), kind="ga", title="2.7 GA release"),
         ),
         time_off=(
             TimeOffEntry(
@@ -80,8 +80,15 @@ def test_derive_sprint_notes_format(cfg: Config) -> None:
     notes = derive_sprint_notes(sprint)
     assert notes == [
         "Go/No-Go deadline 4PM EST — Apr 17",
-        "AAP 2.7 GA release — Apr 22",
+        "2.7 GA release — Apr 22",
     ]
+
+
+def test_render_sprint_release_row_labelled_releases(cfg: Config) -> None:
+    sprint = _minimal_sprint()
+    html, _ = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
+    assert ">Releases<" in html
+    assert "AAP" not in html
 
 
 def test_render_sprint_snapshot(cfg: Config, snapshot) -> None:

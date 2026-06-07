@@ -4,7 +4,7 @@ end: 2026-04-29
 
 events:
   - {date: 2026-04-17, kind: gono, title: Go/No-Go deadline 4PM EST}
-  - {date: 2026-04-22, kind: ga,   title: AAP 2.7 GA release}
+  - {date: 2026-04-22, kind: ga,   title: 2.7 GA release}
   - {date: 2026-04-22, kind: test, title: Testathon Day 1}
   - {date: 2026-04-23, kind: test, title: Testathon Day 2}
 
