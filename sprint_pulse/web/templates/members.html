@@ -2,7 +2,7 @@
 {% block title %}Team · Sprint Pulse{% endblock %}
 {% block content %}
 <h1>Team</h1>
-<p class="subtitle">Members on Orchestration are always shown gray and excluded from capacity.</p>
+<p class="subtitle">Excluded members are shown gray and don't count toward capacity.</p>
 
 <div class="card">
   <h2>Add a member</h2>
@@ -14,7 +14,7 @@
         <input type="text" id="name" name="name" placeholder="Jane Doe" required>
       </div>
       <div style="flex:0 0 auto; min-width:auto">
-        <label class="muted"><input type="checkbox" name="is_orchestration" value="true"> Orchestration</label>
+        <label class="muted"><input type="checkbox" name="is_excluded" value="true"> Exclude from capacity</label>
       </div>
       <div style="flex:0 0 auto; min-width:auto">
         <button type="submit">Add</button>

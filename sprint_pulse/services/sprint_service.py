@@ -1,8 +1,8 @@
 """Sprint/event/time-off reads + validated mutators over the DB.
 
-Validation reuses the shared field validators in ``sprint_pulse.sprints``
-(``working_day_error``, ``event_kind_error``) so the DB path enforces exactly
-the same rules the YAML loader always did.
+Validation reuses the shared field validator ``working_day_error`` from
+``sprint_pulse.sprints`` for dates; event/absence type validity is checked
+against the DB type tables (``services.type_service``).
 """
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ from sprint_pulse.services import config_service, jira_service, time_off_service
 from sprint_pulse.sprints import (
     Event,
     Sprint,
-    event_kind_error,
     working_day_error,
 )
 from sprint_pulse.sprints import slugify as _slug
@@ -236,7 +235,7 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
     except JiraUnavailable as e:
         return None, f"Could not reach Jira ({e}). On the VPN?"
 
-    prefix = (config_service.get_settings(session).team_name or "Wisdom") + " "
+    prefix = (config_service.get_settings(session).team_name or "My Team") + " "
     rows = session.exec(select(m.Sprint)).all()
     existing_ids = {row.id for row in rows}
     existing_jira_ids = {row.jira_sprint_id for row in rows if row.jira_sprint_id is not None}
@@ -304,13 +303,14 @@ def import_jira_sprints(session: Session, selections: list[tuple[int, str]]) -> 
 # --- Event CRUD -------------------------------------------------------------
 
 def add_event(session: Session, sprint_id: str, d: date, kind: str, title: str) -> m.Event:
+    from sprint_pulse.services import type_service
+
     sprint = _get_sprint(session, sprint_id)
     day_err = working_day_error(d, sprint.start, sprint.end)
     if day_err:
         raise ValidationError(f"date {day_err}", field="date")
-    kind_err = event_kind_error(kind)
-    if kind_err:
-        raise ValidationError(kind_err, field="kind")
+    if kind not in type_service.event_type_keys(session):
+        raise ValidationError(f'unknown event type "{kind}"', field="kind")
     if not (title or "").strip():
         raise ValidationError("title is required", field="title")
     event = m.Event(sprint_id=sprint_id, date=d, kind=kind, title=title.strip())

@@ -46,7 +46,7 @@ def make_client(session: Session):
     if demo_mode():
         from sprint_pulse.services.mock_jira import MockJiraClient
 
-        return MockJiraClient(settings.team_name or "Wisdom")
+        return MockJiraClient(settings.team_name or "My Team")
     token = secrets.get_token(settings.token_ref, settings.jira_username)
     if not (settings.jira_site and settings.jira_board and settings.jira_username and token):
         return None

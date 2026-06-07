@@ -38,7 +38,7 @@ def test_empty_db_redirects_to_setup(empty_client):
 def test_dashboard_renders_when_seeded(seeded_client):
     r = seeded_client.get("/")
     assert r.status_code == 200
-    assert "Wisdom Team" in r.text
+    assert "My Team" in r.text
     assert "Sprint Pulse" in r.text  # the injected app-bar
 
 
@@ -183,3 +183,53 @@ def test_sprint_timeoff_routes_are_gone(seeded_client):
                            data={"associate": "Alice Anderson", "start": "2026-04-20",
                                  "end": "2026-04-20", "notes": "PTO"})
     assert r.status_code == 404
+
+
+def test_types_page_crud_flow():
+    from fastapi.testclient import TestClient
+    from sprint_pulse.web.app import create_app
+    client = TestClient(create_app(":memory:"))
+    # page renders with seeded defaults
+    page = client.get("/types")
+    assert page.status_code == 200
+    assert "PTO" in page.text          # default absence label
+    assert "Release freeze" in page.text  # default event label
+    # create a custom absence type (color must come from the palette)
+    r = client.post("/types/absence",
+                    data={"label": "Jury Duty", "abbreviation": "J", "color": "#A0CBE8"},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    assert "Jury Duty" in client.get("/types").text
+    # invalid color (not in palette) re-renders with an error (200, not redirect)
+    bad = client.post("/types/absence",
+                      data={"label": "Bad", "abbreviation": "B", "color": "#000000"},
+                      follow_redirects=False)
+    assert bad.status_code == 200
+    assert "palette" in bad.text
+    # delete an unused default event type succeeds (303)
+    d = client.post("/types/event/test/delete", follow_redirects=False)
+    assert d.status_code == 303
+    assert "Testathon" not in client.get("/types").text
+
+
+def test_types_update_and_in_use_delete():
+    from datetime import date
+    from fastapi.testclient import TestClient
+    from sprint_pulse.web.app import create_app
+    client = TestClient(create_app(":memory:"))
+    # update a default event type's color -> 303, persists, key unchanged
+    r = client.post("/types/event/ga/update",
+                    data={"label": "Target release", "abbreviation": "R", "color": "#A0CBE8"},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    assert "#A0CBE8" in client.get("/types").text
+    # create a sprint so we can attach a 'ga' event to it
+    client.post("/sprints", data={"label": "2026-16", "start": "2026-04-16", "end": "2026-04-29"},
+                follow_redirects=False)
+    # add_event returns 200 (partial HTML), not a redirect
+    client.post("/sprints/2026-16/events",
+                data={"event_date": "2026-04-17", "kind": "ga", "title": "Release"})
+    # now deleting 'ga' is blocked — service raises ValidationError -> 200 + error message
+    blocked = client.post("/types/event/ga/delete", follow_redirects=False)
+    assert blocked.status_code == 200
+    assert "cannot delete" in blocked.text.lower()

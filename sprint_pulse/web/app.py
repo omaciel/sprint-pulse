@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from sprint_pulse.db.engine import create_db_and_tables, get_engine
 from sprint_pulse.web.paths import STATIC_DIR
-from sprint_pulse.web.routers import config_page, dashboard, members, scheduler, setup, sprints
+from sprint_pulse.web.routers import config_page, dashboard, members, scheduler, setup, sprints, types
 from sprint_pulse.web.scheduler import SchedulerManager
 
 
@@ -50,6 +50,7 @@ def create_app(db_path: Path | str | None = None) -> FastAPI:
     app.include_router(config_page.router)
     app.include_router(members.router)
     app.include_router(sprints.router)
+    app.include_router(types.router)
     app.include_router(scheduler.router)
 
     @app.get("/health")

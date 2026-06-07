@@ -17,7 +17,7 @@ roster:
   - Carol Diaz
   - Jack Kelly
 
-orchestration:
+excluded:
   - Grace Hughes
   - Hassan Ibrahim
 

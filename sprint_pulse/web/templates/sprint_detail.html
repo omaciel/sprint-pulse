@@ -38,7 +38,7 @@
       <div>
         <label for="kind">Kind</label>
         <select id="kind" name="kind" required>
-          {% for k in event_kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          {% for t in event_types %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}
         </select>
       </div>
       <div style="flex:2">

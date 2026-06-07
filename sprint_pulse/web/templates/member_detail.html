@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ member.name }} · Sprint Pulse{% endblock %}
+{% block head %}<style>{{ cal_type_css }}</style>{% endblock %}
 {% block content %}
 <p><a class="link" href="/members">← Team</a></p>
 <h1>{{ member.name }}</h1>
 
 <div class="card">
   <div class="palette" id="palette">
-    {% set letters = {"pto":"P","holiday":"H","company":"C","partial":"~","tentative":"?"} %}
-    {% for t in types %}
-      <span class="chip {{ t }}{% if loop.first %} sel{% endif %}" data-type="{{ t }}">{{ letters[t] }} {{ t }}</span>
+    {% for t in absence_types %}
+      <span class="chip ty-{{ t.key }}{% if loop.first %} sel{% endif %}" data-type="{{ t.key }}">{{ t.abbreviation }} {{ t.label }}</span>
     {% endfor %}
     <input type="text" id="cal-notes" placeholder="optional note…" style="flex:1; min-width:140px">
   </div>
@@ -24,16 +24,16 @@
           <div><label>From</label><input type="date" name="start" required></div>
           <div><label>To</label><input type="date" name="end" required></div>
           <div><label>Type</label><select name="type">
-            {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+            {% for t in absence_types %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}</select></div>
           <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add range</button></div>
         </div>
       </form>
     </div>
 
     <div style="flex:1; min-width:180px">
-      <div class="card" style="margin:0 0 12px"><h2>Orchestration</h2>
+      <div class="card" style="margin:0 0 12px"><h2>Excluded from capacity</h2>
         <form hx-post="/members/{{ member.id }}/toggle" hx-target="#members-table" hx-swap="none">
-          <label class="muted"><input type="checkbox" {% if member.is_orchestration %}checked{% endif %}
+          <label class="muted"><input type="checkbox" {% if member.is_excluded %}checked{% endif %}
             onchange="this.form.requestSubmit()"> excluded from capacity</label>
         </form></div>
       <div id="member-summary">

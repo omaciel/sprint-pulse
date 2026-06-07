@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from sprint_pulse.config import Config, JiraConfig, normalize_site
+from sprint_pulse.config import Config, JiraConfig, TypeDef, normalize_site
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.services import secrets
+from sprint_pulse.services import secrets, type_service
 
 
 def get_settings(session: Session) -> m.Settings:
@@ -37,7 +37,7 @@ def build_config_from_db(session: Session) -> Config:
     settings = get_settings(session)
     members = list_members(session)
     roster = [member.name for member in members]
-    orchestration = {member.name for member in members if member.is_orchestration}
+    excluded = {member.name for member in members if member.is_excluded}
 
     by_id = {member.id: member.name for member in members}
     aliases = {
@@ -46,13 +46,24 @@ def build_config_from_db(session: Session) -> Config:
         if alias.target_member_id in by_id
     }
 
+    event_types = tuple(
+        TypeDef(t.key, t.label, t.abbreviation, t.color, t.sort_order)
+        for t in type_service.list_event_types(session)
+    )
+    absence_types = tuple(
+        TypeDef(t.key, t.label, t.abbreviation, t.color, t.sort_order)
+        for t in type_service.list_absence_types(session)
+    )
+
     return Config(
         working_days_per_sprint=settings.working_days_per_sprint,
         jira=JiraConfig(site=settings.jira_site, board=settings.jira_board),
         roster=roster,
-        orchestration=orchestration,
+        excluded=excluded,
         name_aliases=aliases,
-        team_name=settings.team_name or "Wisdom",
+        team_name=settings.team_name or "My Team",
+        event_types=event_types,
+        absence_types=absence_types,
     )
 
 
@@ -94,7 +105,7 @@ def apply_jira_settings(
     if working_days_per_sprint is not None:
         fields["working_days_per_sprint"] = working_days_per_sprint
     if team_name is not None:
-        fields["team_name"] = (team_name or "").strip() or "Wisdom"
+        fields["team_name"] = (team_name or "").strip() or "My Team"
     settings = update_settings(session, **fields)
     # Only the keyring backend is writable; env is operator-provided.
     if jira_token.strip() and token_ref == "keyring" and username:
@@ -114,7 +125,7 @@ def get_member(session: Session, member_id: int) -> m.TeamMember:
     return _get_member(session, member_id)
 
 
-def add_member(session: Session, name: str, *, is_orchestration: bool = False) -> m.TeamMember:
+def add_member(session: Session, name: str, *, is_excluded: bool = False) -> m.TeamMember:
     name = (name or "").strip()
     if not name:
         raise ValidationError("name is required", field="name")
@@ -123,7 +134,7 @@ def add_member(session: Session, name: str, *, is_orchestration: bool = False) -
     # max(sort_order)+1, not count: a prior removal would otherwise collide.
     existing = list_members(session)
     next_order = (max((member.sort_order for member in existing), default=-1)) + 1
-    member = m.TeamMember(name=name, is_orchestration=is_orchestration, sort_order=next_order)
+    member = m.TeamMember(name=name, is_excluded=is_excluded, sort_order=next_order)
     session.add(member)
     session.flush()
     return member
@@ -142,9 +153,9 @@ def rename_member(session: Session, member_id: int, new_name: str) -> m.TeamMemb
     return member
 
 
-def toggle_orchestration(session: Session, member_id: int) -> m.TeamMember:
+def toggle_excluded(session: Session, member_id: int) -> m.TeamMember:
     member = _get_member(session, member_id)
-    member.is_orchestration = not member.is_orchestration
+    member.is_excluded = not member.is_excluded
     session.add(member)
     return member
 

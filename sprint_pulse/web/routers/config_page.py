@@ -26,7 +26,7 @@ def config_page(request: Request, session: Session = Depends(get_session), saved
 def save_config(
     request: Request,
     working_days_per_sprint: int = Form(...),
-    team_name: str = Form("Wisdom"),
+    team_name: str = Form("My Team"),
     jira_site: str = Form(""),
     jira_board: str = Form(""),
     jira_username: str = Form(""),

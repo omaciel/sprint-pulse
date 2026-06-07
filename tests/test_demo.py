@@ -67,7 +67,7 @@ def test_available_sprints_use_mock_in_demo(engine, monkeypatch):
 def test_examples_import(engine):
     counts = import_yaml(engine, EXAMPLES / "config.yaml", EXAMPLES / "sprints")
     assert counts["members"] == 6
-    assert counts["orchestration"] == 2
+    assert counts["excluded"] == 2
     assert counts["sprints"] == 3
     with session_scope(engine) as s:
         cfg = config_service.build_config_from_db(s)

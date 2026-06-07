@@ -3,9 +3,14 @@ from datetime import date
 
 import pytest
 
-from sprint_pulse.config import Config, JiraConfig
+from sprint_pulse.config import Config, JiraConfig, TypeDef
 from sprint_pulse.render import render_sprint, derive_sprint_notes
 from sprint_pulse.sprints import Event, Sprint, TimeOffEntry
+from sprint_pulse.types_defaults import DEFAULT_EVENT_TYPES, DEFAULT_ABSENCE_TYPES
+
+
+def _default_typedefs(rows):
+    return tuple(TypeDef(**r) for r in rows)
 
 
 @pytest.fixture
@@ -20,8 +25,10 @@ def cfg() -> Config:
             "Grace Hughes",
             "Hassan Ibrahim",
         ],
-        orchestration={"Grace Hughes", "Hassan Ibrahim"},
+        excluded={"Grace Hughes", "Hassan Ibrahim"},
         name_aliases={},
+        event_types=_default_typedefs(DEFAULT_EVENT_TYPES),
+        absence_types=_default_typedefs(DEFAULT_ABSENCE_TYPES),
     )
 
 
@@ -32,7 +39,7 @@ def _minimal_sprint() -> Sprint:
         end=date(2026, 4, 29),
         events=(
             Event(date=date(2026, 4, 17), kind="gono", title="Go/No-Go deadline 4PM EST"),
-            Event(date=date(2026, 4, 22), kind="ga", title="AAP 2.7 GA release"),
+            Event(date=date(2026, 4, 22), kind="ga", title="2.7 GA release"),
         ),
         time_off=(
             TimeOffEntry(
@@ -61,13 +68,17 @@ def test_render_sprint_includes_event_letters(cfg: Config) -> None:
     assert ">R<" in html  # GA release letter
 
 
-def test_render_sprint_orchestration_marked_external(cfg: Config) -> None:
+def test_render_sprint_excluded_marked_and_uncounted(cfg: Config) -> None:
     sprint = _minimal_sprint()
-    html, _ = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
-    assert 'title="On Orchestration"' in html
+    html, days_out = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
+    assert 'class="excluded"' in html
+    # NOTE: excluded-row is emitted only by render_summary, not render_sprint;
+    # the sprint table marks excluded cells with td.excluded, not a row class.
+    assert 'excluded' in html
+    assert 'title="Excluded from capacity"' in html
 
 
-def test_render_sprint_days_out_excludes_orchestration(cfg: Config) -> None:
+def test_render_sprint_days_out_excludes_excluded(cfg: Config) -> None:
     sprint = _minimal_sprint()
     _, days_out = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
     assert days_out["Alice Anderson"] == 1
@@ -79,8 +90,15 @@ def test_derive_sprint_notes_format(cfg: Config) -> None:
     notes = derive_sprint_notes(sprint)
     assert notes == [
         "Go/No-Go deadline 4PM EST — Apr 17",
-        "AAP 2.7 GA release — Apr 22",
+        "2.7 GA release — Apr 22",
     ]
+
+
+def test_render_sprint_release_row_labelled_releases(cfg: Config) -> None:
+    sprint = _minimal_sprint()
+    html, _ = render_sprint(sprint, cfg, metrics={"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}, state="future")
+    assert ">Releases<" in html
+    assert "AAP" not in html
 
 
 def test_render_sprint_snapshot(cfg: Config, snapshot) -> None:

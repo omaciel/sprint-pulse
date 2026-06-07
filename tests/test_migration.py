@@ -25,18 +25,18 @@ def sprints_dir(valid_dir):
 def test_import_counts(engine, config_path, sprints_dir):
     counts = import_yaml(engine, config_path, sprints_dir)
     assert counts["members"] == 11
-    assert counts["orchestration"] == 2
+    assert counts["excluded"] == 2
     assert counts["aliases"] == 4
     assert counts["sprints"] == 2  # 2026-16, 2026-18 (archive/ ignored)
 
 
-def test_orchestration_flags_persist(engine, config_path, sprints_dir):
+def test_excluded_flags_persist(engine, config_path, sprints_dir):
     import_yaml(engine, config_path, sprints_dir)
     with session_scope(engine) as s:
-        orch = s.exec(
-            select(m.TeamMember).where(m.TeamMember.is_orchestration == True)  # noqa: E712
+        excluded_members = s.exec(
+            select(m.TeamMember).where(m.TeamMember.is_excluded == True)  # noqa: E712
         ).all()
-        names = {member.name for member in orch}
+        names = {member.name for member in excluded_members}
     assert names == {"Grace Hughes", "Hassan Ibrahim"}
 
 
@@ -104,7 +104,7 @@ def test_legacy_timeoff_is_flattened_and_dropped():
     eng = get_engine(":memory:")
     # Build the LEGACY schema by hand (raw SQL, so the test survives model removal).
     with eng.begin() as conn:
-        conn.exec_driver_sql("CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, is_orchestration BOOLEAN, sort_order INTEGER)")
+        conn.exec_driver_sql("CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, is_excluded BOOLEAN, sort_order INTEGER)")
         conn.exec_driver_sql("INSERT INTO teammember VALUES (1, 'Alice', 0, 0)")
         conn.exec_driver_sql("CREATE TABLE timeoff (id INTEGER PRIMARY KEY, sprint_id VARCHAR, member_id INTEGER, notes VARCHAR, type VARCHAR)")
         conn.exec_driver_sql("CREATE TABLE timeoffday (id INTEGER PRIMARY KEY, time_off_id INTEGER, date DATE)")
@@ -151,7 +151,7 @@ def test_yaml_import_derives_slug_from_label(tmp_path):
           - Alice Anderson
           - Bruno Costa
 
-        orchestration:
+        excluded:
           - Bruno Costa
 
         name_aliases: {}
@@ -190,6 +190,32 @@ def test_label_column_backfills_from_id():
     create_db_and_tables(engine)
     with session_scope(engine) as s:
         assert s.get(m.Sprint, "2026-16").label == "2026-16"
+
+
+def test_create_db_renames_is_orchestration_column(tmp_path):
+    """An existing DB with the old is_orchestration column is auto-renamed to
+    is_excluded at startup (create_db_and_tables), preserving the value."""
+    import sqlite3
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine
+    db = tmp_path / "old.db"
+    conn = sqlite3.connect(str(db))
+    conn.executescript(
+        "CREATE TABLE teammember (id INTEGER PRIMARY KEY, name VARCHAR, "
+        "is_orchestration BOOLEAN DEFAULT 0, sort_order INTEGER DEFAULT 0);"
+        "INSERT INTO teammember (id, name, is_orchestration) VALUES (1, 'Alice', 1);"
+    )
+    conn.commit(); conn.close()
+    engine = get_engine(db)
+    create_db_and_tables(engine)  # should rename + seed, not crash
+    with engine.begin() as c:
+        cols = {r[1] for r in c.exec_driver_sql("PRAGMA table_info(teammember)")}
+        assert "is_excluded" in cols and "is_orchestration" not in cols
+        assert c.exec_driver_sql("SELECT is_excluded FROM teammember WHERE id=1").fetchone()[0] == 1
+        # idempotent: second run is a clean no-op
+    create_db_and_tables(engine)
+    with engine.begin() as c:
+        cols = {r[1] for r in c.exec_driver_sql("PRAGMA table_info(teammember)")}
+        assert "is_excluded" in cols and "is_orchestration" not in cols
 
 
 def test_label_column_backfills_null_from_upgrade():

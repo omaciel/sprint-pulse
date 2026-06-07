@@ -91,13 +91,28 @@ def get_engine(db_path: Path | str | None = None, *, echo: bool = False) -> Engi
 # Columns added after the initial schema. Since we don't use Alembic, we add
 # any missing ones in place so an existing DB file keeps working after upgrade.
 _ADDED_COLUMNS = {
-    "settings": [("team_name", "VARCHAR DEFAULT 'Wisdom'")],
+    "settings": [("team_name", "VARCHAR DEFAULT 'My Team'")],
     "sprint": [
         ("archived", "BOOLEAN DEFAULT 0"),
         ("jira_sprint_id", "INTEGER"),
         ("label", "VARCHAR DEFAULT ''"),
     ],
 }
+
+
+# One-off column renames: (table, old, new). SQLite >= 3.25 supports RENAME COLUMN.
+_RENAMED_COLUMNS = [
+    ("teammember", "is_orchestration", "is_excluded"),
+]
+
+
+def _rename_columns(engine: Engine) -> None:
+    """Apply pending column renames idempotently (old present, new absent)."""
+    with engine.begin() as conn:
+        for table, old, new in _RENAMED_COLUMNS:
+            cols = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            if old in cols and new not in cols:
+                conn.exec_driver_sql(f"ALTER TABLE {table} RENAME COLUMN {old} TO {new}")
 
 
 def _ensure_columns(engine: Engine) -> None:
@@ -159,6 +174,10 @@ def _migrate_legacy_timeoff(engine: Engine, *, pre_existing: set[str]) -> None:
 
 
 def create_db_and_tables(engine: Engine) -> None:
+    # Correct any pre-rename schema FIRST so create_all (which never alters an
+    # existing table) and every later step see the renamed columns. No-op on a
+    # fresh DB (the table doesn't exist yet) and on a second run (old absent).
+    _rename_columns(engine)
     # Snapshot table names BEFORE create_all so the migration can distinguish
     # a genuine legacy install (old tables present, memberdayoff absent) from a
     # fresh install (all tables created simultaneously by create_all).
@@ -169,6 +188,10 @@ def create_db_and_tables(engine: Engine) -> None:
     _ensure_columns(engine)
     _backfill_sprint_labels(engine)
     _migrate_legacy_timeoff(engine, pre_existing=pre_existing)
+    from sprint_pulse.services.type_service import seed_default_types
+    with Session(engine) as s:
+        seed_default_types(s)
+        s.commit()
 
 
 @contextmanager

@@ -83,7 +83,7 @@ def cfg() -> Config:
             "Jack Kelly",
             "Ines Jensen",
         ],
-        orchestration={"Grace Hughes", "Hassan Ibrahim"},
+        excluded={"Grace Hughes", "Hassan Ibrahim"},
         name_aliases={},
     )
 

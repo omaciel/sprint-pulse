@@ -25,8 +25,8 @@ _SPRINTS = [
 class MockJiraClient:
     """Implements the bits the app uses: fetch_sprints + fetch_metrics."""
 
-    def __init__(self, team_name: str = "Wisdom") -> None:
-        self.team_name = team_name or "Wisdom"
+    def __init__(self, team_name: str = "My Team") -> None:
+        self.team_name = team_name or "My Team"
 
     def fetch_sprints(self) -> dict[str, dict]:
         out: dict[str, dict] = {}

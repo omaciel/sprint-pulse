@@ -52,7 +52,7 @@
     vertical-align: -3px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .pill.orch { background: #e5e7eb; color: #374151; }
+  .pill.excluded { background: #e5e7eb; color: #374151; }
   .pill.ok { background: #d1fae5; color: #065f46; }
   .pill.error { background: #fee2e2; color: #991b1b; }
   .error { color: #991b1b; font-size: 13px; margin: 6px 0; }
@@ -69,14 +69,11 @@
   .cal-cell.muted { background:#f6f6f6; color:#bbb }
   .cal-cell.outside { background:#fafafa; color:#ccc }
   .cal-letter { float:right; font-weight:600; font-size:11px }
-  .cal-cell.pto{background:var(--pto)} .cal-cell.holiday{background:var(--holiday)}
-  .cal-cell.partial{background:var(--partial)} .cal-cell.company{background:var(--company)}
-  .cal-cell.tentative{background:var(--tentative)}
+  /* Per-type cell/chip colors are generated from the DB type table (data-driven);
+     pages that show the calendar inject them via the head block below. */
   .palette { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:12px }
   .chip { padding:5px 10px; border-radius:14px; font-size:12px; border:1px solid var(--border); cursor:pointer }
   .chip.sel { outline:2px solid var(--text); font-weight:600 }
-  .chip.pto{background:var(--pto)} .chip.holiday{background:var(--holiday)}
-  .chip.partial{background:var(--partial)} .chip.company{background:var(--company)} .chip.tentative{background:var(--tentative)}
 </style>
 {% block head %}{% endblock %}
 </head>

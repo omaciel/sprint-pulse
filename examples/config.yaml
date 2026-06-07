@@ -17,7 +17,7 @@ roster:
   - Grace Hughes
   - Hassan Ibrahim
 
-orchestration:
+excluded:
   - Grace Hughes
   - Hassan Ibrahim
 

@@ -3,7 +3,7 @@
 {% block content %}
 <p class="muted">Step 3 of 3</p>
 <h1>Add your team</h1>
-<p class="subtitle">Mark anyone on Orchestration — they're shown gray and excluded from capacity.</p>
+<p class="subtitle">Mark anyone to exclude from capacity — they're shown gray and don't count.</p>
 
 <div class="card">
   <form hx-post="/setup/team/add" hx-target="#setup-members" hx-swap="innerHTML"
@@ -14,7 +14,7 @@
         <input type="text" id="name" name="name" placeholder="Jane Doe" required autofocus>
       </div>
       <div style="flex:0 0 auto; min-width:auto">
-        <label class="muted"><input type="checkbox" name="is_orchestration" value="true"> Orchestration</label>
+        <label class="muted"><input type="checkbox" name="is_excluded" value="true"> Exclude from capacity</label>
       </div>
       <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add</button></div>
     </div>

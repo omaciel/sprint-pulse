@@ -9,8 +9,7 @@ from sqlmodel import Session, select
 
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.services import config_service, sprint_service, time_off_service
-from sprint_pulse.sprints import EVENT_KINDS
+from sprint_pulse.services import config_service, sprint_service, time_off_service, type_service
 from sprint_pulse.web.deps import get_session, templates
 
 router = APIRouter()
@@ -176,7 +175,7 @@ def _detail_context(session: Session, sprint_id: str, *, event_error="", date_er
         "active": "/sprints",
         "sprint": sprint,
         "events": events,
-        "event_kinds": EVENT_KINDS,
+        "event_types": type_service.list_event_types(session),
         "outage": outage,
         "member_id_by_name": {name: mid for mid, name in member_name.items()},
         "event_error": event_error,

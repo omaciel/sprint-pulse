@@ -15,10 +15,8 @@ from sqlmodel import Session, select
 
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.render import TYPE_LETTERS
 from sprint_pulse.sprints import TimeOffEntry, weekday_error
 
-VALID_TYPES = ("pto", "holiday", "company", "partial", "tentative")
 # Type precedence for resolving a (member, day) that carried two types in source
 # data — higher wins. Used by the YAML import path (migrate.py); the unique
 # (member_id, date) constraint means live data never has a conflict.
@@ -36,11 +34,11 @@ def _require_member(session: Session, member_id: int) -> m.TeamMember:
 
 def set_days(session: Session, member_id: int, dates: Iterable[date], type_: str, notes: str = "") -> None:
     """Upsert one MemberDayOff per date (replacing type/notes if present)."""
+    from sprint_pulse.services import type_service
+
     _require_member(session, member_id)
-    if type_ not in VALID_TYPES:
-        raise ValidationError(
-            f'unknown type "{type_}" (expected {"/".join(VALID_TYPES)})', field="type"
-        )
+    if type_ not in type_service.absence_type_keys(session):
+        raise ValidationError(f'unknown absence type "{type_}"', field="type")
     dates = list(dates)
     if not dates:
         raise ValidationError("at least one day is required", field="days")
@@ -147,8 +145,15 @@ def entries_for_sprints(rows, member_name: dict, start: date, end: date) -> list
     return _entries_from_rows(in_range, member_name)
 
 
-def build_month_grid(year: int, month: int, day_map: dict) -> list[list[dict]]:
-    """Weeks (Mon-first) of cell dicts for the calendar template."""
+def build_month_grid(
+    year: int, month: int, day_map: dict, letters: dict[str, str] | None = None
+) -> list[list[dict]]:
+    """Weeks (Mon-first) of cell dicts for the calendar template.
+
+    ``letters`` maps an absence-type key to its display abbreviation (from the DB
+    type table); cells default to an empty letter for unknown/absent keys.
+    """
+    letters = letters or {}
     weeks: list[list[dict]] = []
     for week in _cal.Calendar(firstweekday=0).monthdatescalendar(year, month):
         cells: list[dict] = []
@@ -161,7 +166,7 @@ def build_month_grid(year: int, month: int, day_map: dict) -> list[list[dict]]:
                 "weekend": d.weekday() >= 5,
                 "type": type_,
                 "notes": notes,
-                "letter": TYPE_LETTERS.get(type_, ""),
+                "letter": letters.get(type_, ""),
             })
         weeks.append(cells)
     return weeks

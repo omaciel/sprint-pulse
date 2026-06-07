@@ -27,7 +27,7 @@ class Settings(SQLModel, table=True):
     id: Optional[int] = Field(default=1, primary_key=True)
     working_days_per_sprint: int = 10
     # Display label + Jira sprint-name prefix (board sprints are "{team_name} {id}").
-    team_name: str = "Wisdom"
+    team_name: str = "My Team"
 
     jira_site: str = ""
     jira_board: str = ""
@@ -47,7 +47,7 @@ class Settings(SQLModel, table=True):
 class TeamMember(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
-    is_orchestration: bool = False
+    is_excluded: bool = False
     sort_order: int = 0
 
 
@@ -84,8 +84,24 @@ class Event(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     sprint_id: str = Field(foreign_key="sprint.id", index=True)
     date: date
-    kind: str  # tags | gono | ga | freeze | test
+    kind: str  # default keys: tags|gono|ga|freeze|test (user-extensible via EventType)
     title: str
+
+
+class EventType(SQLModel, table=True):
+    key: str = Field(primary_key=True)            # slug, == Event.kind
+    label: str = ""
+    abbreviation: str = ""                         # 1-2 chars shown in cells
+    color: str = ""                                # hex from PALETTE
+    sort_order: int = 0
+
+
+class AbsenceType(SQLModel, table=True):
+    key: str = Field(primary_key=True)            # slug, == MemberDayOff.type
+    label: str = ""
+    abbreviation: str = ""
+    color: str = ""
+    sort_order: int = 0
 
 
 class MemberDayOff(SQLModel, table=True):
@@ -98,7 +114,7 @@ class MemberDayOff(SQLModel, table=True):
     # annotation resolution when __table_args__ is also present. Index is declared
     # below in __table_args__ instead.
     date: date
-    type: str = "pto"  # pto | holiday | company | partial | tentative
+    type: str = "pto"  # default keys: pto|holiday|company|partial|tentative (user-extensible via AbsenceType)
     notes: str = ""
     __table_args__: ClassVar[tuple] = (
         UniqueConstraint("member_id", "date", name="uq_member_day"),
