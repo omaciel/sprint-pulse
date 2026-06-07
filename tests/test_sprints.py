@@ -160,7 +160,7 @@ def test_load_sprints_skips_archive(valid_dir: Path, cfg: Config) -> None:
 
 def test_load_sprints_returns_sorted(valid_dir: Path, cfg: Config) -> None:
     sprints = load_sprints(valid_dir / "sprints_dir", cfg)
-    assert [s.id for s in sprints] == sorted([s.id for s in sprints])
+    assert [(s.start, s.end) for s in sprints] == sorted((s.start, s.end) for s in sprints)
 
 
 def test_duplicate_sprint_slug_raises(cfg: Config) -> None:

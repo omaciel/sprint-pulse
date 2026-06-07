@@ -82,7 +82,7 @@ def import_yaml(
         day_off: dict[tuple, tuple[str, str]] = {}  # (member_id, date) -> (type, notes)
         for sprint in sprints:
             slug = slugify(sprint.id)
-            session.add(m.Sprint(id=slug, label=sprint.id, start=sprint.start, end=sprint.end))
+            session.add(m.Sprint(id=slug, label=sprint.label, start=sprint.start, end=sprint.end))
             for ev in sprint.events:
                 session.add(
                     m.Event(sprint_id=slug, date=ev.date, kind=ev.kind, title=ev.title)
