@@ -148,3 +148,53 @@ def test_label_column_backfills_from_id():
     create_db_and_tables(engine)
     with session_scope(engine) as s:
         assert s.get(m.Sprint, "2026-16").label == "2026-16"
+
+
+def test_label_column_backfills_null_from_upgrade():
+    """Simulate a DB upgrade where ALTER TABLE ADD COLUMN produced NULL labels.
+
+    Strategy: build the sprint table via raw SQL *without* a label column,
+    insert a row, then add the column with no DEFAULT (so SQLite stores NULL
+    for the existing row).  Calling create_db_and_tables afterwards must run
+    _backfill_sprint_labels and set label == id via the IS NULL branch."""
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.db import models as m
+
+    engine = get_engine(":memory:")
+
+    # Build a minimal pre-label sprint table (matches Sprint columns minus label).
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            'CREATE TABLE sprint ('
+            '  id VARCHAR NOT NULL PRIMARY KEY,'
+            '  start DATE NOT NULL,'
+            '  "end" DATE NOT NULL,'
+            '  archived BOOLEAN NOT NULL,'
+            '  jira_sprint_id INTEGER,'
+            '  jira_state VARCHAR NOT NULL,'
+            '  done_n INTEGER NOT NULL,'
+            '  tot_n INTEGER NOT NULL,'
+            '  done_sp INTEGER NOT NULL,'
+            '  tot_sp INTEGER NOT NULL,'
+            '  last_refreshed DATETIME'
+            ')'
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO sprint VALUES ('2026-16', '2026-04-14', '2026-04-27',"
+            " 0, NULL, 'future', 0, 0, 0, 0, NULL)"
+        )
+        # Add label with NO DEFAULT -> existing row gets NULL.
+        conn.exec_driver_sql("ALTER TABLE sprint ADD COLUMN label VARCHAR")
+
+    # Confirm the precondition: label must be NULL.
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql(
+            "SELECT label FROM sprint WHERE id = '2026-16'"
+        ).fetchone()
+    assert row[0] is None, "precondition: label must be NULL before backfill"
+
+    # create_db_and_tables skips the already-present label column in
+    # _ensure_columns, then _backfill_sprint_labels fires the IS NULL branch.
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        assert s.get(m.Sprint, "2026-16").label == "2026-16"
