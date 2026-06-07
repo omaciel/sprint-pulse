@@ -22,14 +22,15 @@ def slugify(label: str) -> str:
     service layer (``sprint_service.slugify_label`` delegates here) and the YAML
     import path. Accented Latin characters are folded to ASCII ('Été' -> 'ete');
     other non-ASCII characters are dropped. Runs of unsafe chars collapse to one
-    hyphen; leading/trailing hyphens are stripped.
+    hyphen; leading/trailing hyphens, dots, and underscores are stripped (so
+    '.NET 2026' -> 'net-2026'), while mid-slug dots/underscores are preserved.
     """
     ascii_label = (
         unicodedata.normalize("NFKD", label)
         .encode("ascii", "ignore")
         .decode("ascii")
     )
-    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-")
+    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-._")
 
 
 HOLIDAY_KEYWORDS = (

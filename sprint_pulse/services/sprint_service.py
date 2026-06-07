@@ -244,7 +244,10 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
     candidates: list[dict] = []
     for name, info in jira.items():
         suggested = _suggest_sprint_id(name, prefix)
-        imported = info["id"] in existing_jira_ids or (bool(suggested) and suggested in existing_ids)
+        slug_of_suggested = slugify_label(suggested) if suggested else ""
+        imported = info["id"] in existing_jira_ids or (
+            bool(slug_of_suggested) and slug_of_suggested in existing_ids
+        )
         candidates.append(
             {
                 "jira_id": info["id"],

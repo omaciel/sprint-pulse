@@ -55,6 +55,36 @@ def test_available_lists_all_board_sprints_with_flags(engine, monkeypatch):
     assert by_jira[3]["importable"] is False                # no Jira dates
 
 
+class MixedCaseClient:
+    """A board sprint whose name yields a mixed-case suggestion ('Summer-Fun')
+    for a sprint already stored under the lowercased slug 'summer-fun'."""
+
+    def fetch_sprints(self):
+        return {
+            "Summer Fun": {"id": 99, "state": "future",
+                           "start": date(2026, 7, 9), "end": date(2026, 7, 22)},
+        }
+
+    def fetch_metrics(self, sprint_id):
+        return {"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}
+
+
+def test_available_detects_imported_via_canonicalized_suggestion(engine, monkeypatch):
+    """A sprint stored under a lowercased slug is flagged already_imported even
+    when the board name produces a CASE-PRESERVING (mixed-case) suggestion."""
+    monkeypatch.setattr(jira_service, "make_client", lambda s: MixedCaseClient())
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, "Summer Fun", date(2026, 7, 9), date(2026, 7, 22))
+        assert row.id == "summer-fun"  # stored lowercased
+    with session_scope(engine) as s:
+        candidates, error = spsvc.available_jira_sprints(s)
+    assert error == ""
+    by_jira = {c["jira_id"]: c for c in candidates}
+    cand = by_jira[99]
+    assert cand["suggested_id"] == "Summer-Fun"   # mixed-case suggestion
+    assert cand["already_imported"] is True        # matched after canonicalization
+
+
 def test_available_without_jira_returns_error(engine, monkeypatch):
     monkeypatch.setattr(jira_service, "make_client", lambda s: None)
     with session_scope(engine) as s:
