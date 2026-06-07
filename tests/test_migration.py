@@ -130,3 +130,21 @@ def test_legacy_timeoff_is_flattened_and_dropped():
     create_db_and_tables(eng)  # second call must be a harmless no-op
     with Session(eng) as s:
         assert len(s.exec(select(m.MemberDayOff)).all()) == 2
+
+
+def test_label_column_backfills_from_id():
+    """An existing sprint row with an empty label is backfilled label = id
+    when create_db_and_tables runs again (idempotent upgrade path)."""
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.db import models as m
+    from datetime import date
+
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    # Simulate a pre-label row: insert with an empty label directly.
+    with session_scope(engine) as s:
+        s.add(m.Sprint(id="2026-16", start=date(2026, 4, 16), end=date(2026, 4, 29), label=""))
+    # Re-run schema setup; backfill should populate the empty label.
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        assert s.get(m.Sprint, "2026-16").label == "2026-16"

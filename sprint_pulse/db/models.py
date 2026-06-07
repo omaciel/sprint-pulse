@@ -58,8 +58,10 @@ class NameAlias(SQLModel, table=True):
 
 
 class Sprint(SQLModel, table=True):
-    # String PK like "2026-16" (was the YAML filename stem).
+    # URL/JS-safe slug primary key (e.g. "june-2026"), auto-derived from `label`.
     id: str = Field(primary_key=True)
+    # Free-form display label (e.g. "June 2026"). Backfilled to `id` on upgrade.
+    label: str = ""
     start: date
     end: date
     # Archived sprints stay in the Sprints list but drop off the dashboard.
