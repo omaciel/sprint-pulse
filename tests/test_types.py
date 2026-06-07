@@ -133,6 +133,29 @@ def test_add_event_accepts_custom_type_rejects_unknown():
             spsvc.add_event(s, "2026-16", date(2026, 4, 20), "nope", "bad")
 
 
+def test_sprint_detail_lists_custom_event_type():
+    """Sprint detail 'Add event' dropdown renders DB event-type labels (not bare keys)."""
+    from datetime import date
+    from fastapi.testclient import TestClient
+    from sprint_pulse.web.app import create_app
+
+    client = TestClient(create_app(":memory:"))
+    # Create a sprint via HTTP
+    client.post(
+        "/sprints",
+        data={"label": "2026-16", "start": "2026-04-16", "end": "2026-04-29"},
+        follow_redirects=False,
+    )
+    # Fetch the sprint detail page
+    page = client.get("/sprints/2026-16")
+    assert page.status_code == 200
+    # The dropdown should render labels, not bare keys — "Target release" is the
+    # default label for key "ga".
+    assert "Target release" in page.text
+    # Confirm the option carries the correct value attribute too
+    assert '<option value="ga">Target release</option>' in page.text
+
+
 def test_set_days_accepts_custom_absence_type_rejects_unknown():
     from datetime import date
     from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope

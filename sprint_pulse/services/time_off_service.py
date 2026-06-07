@@ -18,7 +18,6 @@ from sprint_pulse.errors import ValidationError
 from sprint_pulse.render import TYPE_LETTERS
 from sprint_pulse.sprints import TimeOffEntry, weekday_error
 
-VALID_TYPES = ("pto", "holiday", "company", "partial", "tentative")
 # Type precedence for resolving a (member, day) that carried two types in source
 # data — higher wins. Used by the YAML import path (migrate.py); the unique
 # (member_id, date) constraint means live data never has a conflict.
