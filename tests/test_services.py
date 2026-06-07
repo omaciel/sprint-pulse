@@ -79,6 +79,14 @@ def test_create_sprint_accepts_free_form_label(engine):
         assert s.get(m.Sprint, "june-2026") is not None
 
 
+def test_create_sprint_folds_accented_label_to_ascii(engine):
+    from sprint_pulse.services import sprint_service as spsvc
+    with session_scope(engine) as s:
+        row = spsvc.create_sprint(s, "Été 2026", date(2026, 6, 1), date(2026, 6, 12))
+        assert row.id == "ete-2026"
+        assert row.label == "Été 2026"
+
+
 def test_create_sprint_rejects_label_that_slugifies_empty(engine):
     from sprint_pulse.services import sprint_service as spsvc
     with session_scope(engine) as s:

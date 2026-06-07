@@ -7,6 +7,7 @@ the same rules the YAML loader always did.
 from __future__ import annotations
 
 import re
+import unicodedata
 import warnings
 from datetime import date
 
@@ -107,8 +108,15 @@ _SPRINT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 def slugify_label(label: str) -> str:
     """URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
-    Lowercased; runs of non-[A-Za-z0-9._-] collapse to a single hyphen."""
-    return re.sub(r"[^a-z0-9._-]+", "-", label.strip().lower()).strip("-")
+    Accented Latin characters are folded to ASCII ('Été' -> 'ete'); other
+    non-ASCII characters are dropped. Runs of unsafe chars collapse to one
+    hyphen; leading/trailing hyphens are stripped."""
+    ascii_label = (
+        unicodedata.normalize("NFKD", label)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-")
 
 
 def create_sprint(session: Session, label: str, start: date, end: date) -> m.Sprint:
@@ -185,7 +193,8 @@ _ID_IN_NAME = re.compile(r"\d+-\d+")
 
 
 def _slugify(name: str) -> str:
-    """URL/JS-safe id from an arbitrary name: 'Sprint Forty Two' -> 'Sprint-Forty-Two'."""
+    """URL/JS-safe id from an arbitrary name: 'Sprint Forty Two' -> 'Sprint-Forty-Two'.
+    Case-preserving; used only for import-candidate display suggestions (storage uses slugify_label)."""
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-")
     return slug
 
@@ -250,11 +259,12 @@ def available_jira_sprints(session: Session) -> tuple[list[dict] | None, str]:
 
 
 def import_jira_sprints(session: Session, selections: list[tuple[int, str]]) -> dict:
-    """Create Sprint rows from (jira_id, chosen_id) selections.
+    """Create Sprint rows from (jira_id, chosen_label) selections.
 
     Matching is by Jira numeric id, so the board's naming is irrelevant. Each
-    chosen_id is validated by create_sprint; rows that already exist, lack Jira
-    dates, or have a bad id are skipped. The Jira id + state are stored.
+    chosen_label is treated as a free-form sprint label; create_sprint derives
+    the slug id and validates it. Rows that already exist, lack Jira dates, or
+    produce an unusable slug are skipped. The Jira id + state are stored.
     """
     client = jira_service.make_client(session)
     if client is None:
