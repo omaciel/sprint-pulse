@@ -213,7 +213,6 @@ def test_types_page_crud_flow():
 
 
 def test_types_update_and_in_use_delete():
-    from datetime import date
     from fastapi.testclient import TestClient
     from sprint_pulse.web.app import create_app
     client = TestClient(create_app(":memory:"))

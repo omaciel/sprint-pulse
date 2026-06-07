@@ -135,7 +135,6 @@ def test_add_event_accepts_custom_type_rejects_unknown():
 
 def test_sprint_detail_lists_custom_event_type():
     """Sprint detail 'Add event' dropdown renders DB event-type labels (not bare keys)."""
-    from datetime import date
     from fastapi.testclient import TestClient
     from sprint_pulse.web.app import create_app
 

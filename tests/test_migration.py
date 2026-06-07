@@ -204,7 +204,8 @@ def test_create_db_renames_is_orchestration_column(tmp_path):
         "is_orchestration BOOLEAN DEFAULT 0, sort_order INTEGER DEFAULT 0);"
         "INSERT INTO teammember (id, name, is_orchestration) VALUES (1, 'Alice', 1);"
     )
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     engine = get_engine(db)
     create_db_and_tables(engine)  # should rename + seed, not crash
     with engine.begin() as c:

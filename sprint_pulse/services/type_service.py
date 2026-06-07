@@ -53,7 +53,9 @@ def create_event_type(session, label, abbreviation, color):
         raise ValidationError(f'an event type "{key}" already exists', field="label")
     row = m.EventType(key=key, label=label, abbreviation=abbreviation, color=color,
                       sort_order=_next_order(list_event_types(session)))
-    session.add(row); session.flush(); return row
+    session.add(row)
+    session.flush()
+    return row
 
 
 def create_absence_type(session, label, abbreviation, color):
@@ -62,7 +64,9 @@ def create_absence_type(session, label, abbreviation, color):
         raise ValidationError(f'an absence type "{key}" already exists', field="label")
     row = m.AbsenceType(key=key, label=label, abbreviation=abbreviation, color=color,
                         sort_order=_next_order(list_absence_types(session)))
-    session.add(row); session.flush(); return row
+    session.add(row)
+    session.flush()
+    return row
 
 
 def update_event_type(session, key, label, abbreviation, color):
@@ -71,7 +75,8 @@ def update_event_type(session, key, label, abbreviation, color):
         raise ValidationError(f'no event type "{key}"')
     # key (PK) is frozen at creation; only label/abbreviation/color are editable
     _, row.label, row.abbreviation, row.color = _validate(label, abbreviation, color)
-    session.add(row); return row
+    session.add(row)
+    return row
 
 
 def update_absence_type(session, key, label, abbreviation, color):
@@ -80,7 +85,8 @@ def update_absence_type(session, key, label, abbreviation, color):
         raise ValidationError(f'no absence type "{key}"')
     # key (PK) is frozen at creation; only label/abbreviation/color are editable
     _, row.label, row.abbreviation, row.color = _validate(label, abbreviation, color)
-    session.add(row); return row
+    session.add(row)
+    return row
 
 
 def delete_event_type(session, key):

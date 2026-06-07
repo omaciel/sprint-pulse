@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-update lint migrate db-path dev dev-desktop \
+.PHONY: help install install-dev test test-update lint check hooks migrate db-path dev dev-desktop \
         demo demo-desktop build-desktop container-build container-run clean
 
 # Use the project venv automatically if it exists; else fall back to python3.
@@ -25,6 +25,14 @@ test-update:  ## Run tests and refresh HTML snapshot fixtures
 
 lint:  ## Lint with ruff
 	$(PYTHON) -m ruff check sprint_pulse tests
+
+check:  ## Run the full CI gate locally (lint + tests)
+	$(MAKE) lint
+	$(MAKE) test
+
+hooks:  ## Install git hooks (pre-push runs 'make check' before every push)
+	git config core.hooksPath .githooks
+	@echo "Installed: pre-push now runs 'make check' (ruff + pytest) before each push."
 
 migrate:  ## One-time import of data/*.yaml into the SQLite DB
 	$(PYTHON) migrate_yaml_to_sqlite.py

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Pre-push gate: run the same checks CI runs (ruff lint + pytest) before allowing
+# a push, so a push can't break the build. Install with `make hooks`
+# (sets core.hooksPath to .githooks). Bypass in an emergency with:
+#   git push --no-verify
+echo "pre-push: running 'make check' (ruff + pytest)…"
+if ! make check; then
+    echo
+    echo "pre-push: checks FAILED — push aborted. Fix the above, or bypass with 'git push --no-verify'." >&2
+    exit 1
+fi

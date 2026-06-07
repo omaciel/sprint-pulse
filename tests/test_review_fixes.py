@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from sprint_pulse.config import Config, JiraConfig
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import get_engine, session_scope
-from sprint_pulse.errors import ValidationError
 from sprint_pulse.migrate import import_yaml
 from sprint_pulse.render import render_full_html, render_sprint
 from sprint_pulse.services import config_service as cfgsvc

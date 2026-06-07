@@ -1,4 +1,3 @@
-from datetime import date
 
 
 def _make_old_db(path):
