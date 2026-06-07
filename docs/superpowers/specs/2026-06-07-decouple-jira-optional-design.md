@@ -167,3 +167,16 @@ COLUMN`), called from `create_db_and_tables`.
   ALTER. Place it alongside the existing migration helpers in `engine.py` (it is
   naturally idempotent — once labels are set it matches nothing).
 - No PK/FK changes, so `Event.sprint_id` and all existing references are intact.
+
+### Migration-framework decision (2026-06-07)
+
+We **defer** adopting a real migration framework (e.g. Alembic). This feature is
+purely additive (one column + a backfill), which the existing
+`_ADDED_COLUMNS`/`_ensure_columns` mechanism handles cleanly. The lightweight
+scheme cannot express *non-additive* changes (drop/rename/retype a column), so
+the **trigger** to adopt Alembic is the first such change in the decoupling
+series — most likely **extracting the Jira metric columns off `Sprint` into
+their own table** (so metrics can be sourced from Jira *or* manual entry *or*
+YAML). At that point, baseline-`stamp` existing installs so the bespoke
+migrations already in `engine.py` need no replay. Adopting it now would expand
+this feature's scope and fix a baseline before the schema has settled.
