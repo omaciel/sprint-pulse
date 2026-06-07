@@ -7,7 +7,6 @@ the same rules the YAML loader always did.
 from __future__ import annotations
 
 import re
-import unicodedata
 import warnings
 from datetime import date
 
@@ -24,6 +23,7 @@ from sprint_pulse.sprints import (
     event_kind_error,
     working_day_error,
 )
+from sprint_pulse.sprints import slugify as _slug
 
 
 def sort_key(sprint) -> tuple:
@@ -115,15 +115,12 @@ _SPRINT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 def slugify_label(label: str) -> str:
     """URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
-    Accented Latin characters are folded to ASCII ('Été' -> 'ete'); other
-    non-ASCII characters are dropped. Runs of unsafe chars collapse to one
-    hyphen; leading/trailing hyphens are stripped."""
-    ascii_label = (
-        unicodedata.normalize("NFKD", label)
-        .encode("ascii", "ignore")
-        .decode("ascii")
-    )
-    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-")
+
+    Delegates to the canonical :func:`sprint_pulse.sprints.slugify` so the DB
+    path and the YAML import path can never drift. Kept under this name so
+    existing callers/tests are unaffected.
+    """
+    return _slug(label)
 
 
 def create_sprint(session: Session, label: str, start: date, end: date) -> m.Sprint:

@@ -1,6 +1,8 @@
 """Sprint loader: data/sprints/*.yaml -> list[Sprint]."""
 from __future__ import annotations
 
+import re
+import unicodedata
 import warnings
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -11,6 +13,23 @@ from typing import Any
 import yaml
 
 from sprint_pulse.config import Config
+
+
+def slugify(label: str) -> str:
+    """Canonical URL/JS-safe slug from a free-form label: 'June 2026' -> 'june-2026'.
+
+    This is the single source of truth for slug derivation, shared by the DB
+    service layer (``sprint_service.slugify_label`` delegates here) and the YAML
+    import path. Accented Latin characters are folded to ASCII ('Été' -> 'ete');
+    other non-ASCII characters are dropped. Runs of unsafe chars collapse to one
+    hyphen; leading/trailing hyphens are stripped.
+    """
+    ascii_label = (
+        unicodedata.normalize("NFKD", label)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return re.sub(r"[^a-z0-9._-]+", "-", ascii_label.strip().lower()).strip("-")
 
 
 HOLIDAY_KEYWORDS = (
