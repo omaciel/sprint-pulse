@@ -169,6 +169,10 @@ def create_db_and_tables(engine: Engine) -> None:
     _ensure_columns(engine)
     _backfill_sprint_labels(engine)
     _migrate_legacy_timeoff(engine, pre_existing=pre_existing)
+    from sprint_pulse.services.type_service import seed_default_types
+    with Session(engine) as s:
+        seed_default_types(s)
+        s.commit()
 
 
 @contextmanager

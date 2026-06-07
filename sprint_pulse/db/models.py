@@ -88,6 +88,22 @@ class Event(SQLModel, table=True):
     title: str
 
 
+class EventType(SQLModel, table=True):
+    key: str = Field(primary_key=True)            # slug, == Event.kind
+    label: str = ""
+    abbreviation: str = ""                         # 1-2 chars shown in cells
+    color: str = ""                                # hex from PALETTE
+    sort_order: int = 0
+
+
+class AbsenceType(SQLModel, table=True):
+    key: str = Field(primary_key=True)            # slug, == MemberDayOff.type
+    label: str = ""
+    abbreviation: str = ""
+    color: str = ""
+    sort_order: int = 0
+
+
 class MemberDayOff(SQLModel, table=True):
     """One row per (member, working day) absence. Replaces TimeOff + TimeOffDay.
     Not anchored to a sprint — sprints derive outage by date overlap."""
