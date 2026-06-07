@@ -7,11 +7,19 @@ longer required. It remains useful for an explicit, BACKUP-FIRST migration: it
 copies the DB to a .bak file before altering it (startup does not).
 
 Usage:  python scripts/migrate_excluded.py        # migrates the live DB
+   or:  python -m scripts.migrate_excluded
 """
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
+
+# Allow running as a plain file (`python scripts/migrate_excluded.py`), which puts
+# this file's dir on sys.path instead of the repo root — making `sprint_pulse`
+# unimportable. Add the repo root so both invocation styles work.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sprint_pulse.db.engine import create_db_and_tables, default_db_path, get_engine
 
