@@ -223,22 +223,16 @@ def load_sprint_file(path: Path | str, cfg: Config) -> Sprint:
     for i, t in enumerate(raw.get("time_off") or []):
         time_off.extend(_validate_time_off(prefix, i, t or {}, start, end, cfg))
 
-    return Sprint(id=sid, start=start, end=end, events=events, time_off=tuple(time_off))
+    return Sprint(id=sid, label=sid, start=start, end=end, events=events, time_off=tuple(time_off))
 
 
-def _check_duplicate_ids(pairs: list[tuple[str, str]]) -> None:
-    """pairs: list of (filename, id). Raises if any id appears twice."""
+def _check_duplicate_slugs(pairs: list[tuple[str, str]]) -> None:
+    """pairs: list of (filename, slug). Raises if any slug appears twice."""
     seen: dict[str, str] = {}
-    for fname, sid in pairs:
-        if sid in seen:
-            raise SprintError(f"Duplicate sprint id {sid} in {seen[sid]} and {fname}")
-        seen[sid] = fname
-
-
-def _check_id_matches_filename(path: Path, sid: str) -> None:
-    """Raises if the sprint file's id field doesn't match its filename stem."""
-    if sid != path.stem:
-        raise SprintError(f'sprints/{path.name}: id "{sid}" does not match filename')
+    for fname, slug in pairs:
+        if slug in seen:
+            raise SprintError(f"Duplicate sprint slug {slug} in {seen[slug]} and {fname}")
+        seen[slug] = fname
 
 
 def load_sprints(directory: Path | str, cfg: Config) -> list[Sprint]:
@@ -247,7 +241,6 @@ def load_sprints(directory: Path | str, cfg: Config) -> list[Sprint]:
     sprints: list[Sprint] = []
     for p in files:
         sprint = load_sprint_file(p, cfg)
-        _check_id_matches_filename(p, sprint.id)
         sprints.append(sprint)
-    _check_duplicate_ids([(p.name, s.id) for p, s in zip(files, sprints)])
+    _check_duplicate_slugs([(p.name, slugify(s.id)) for p, s in zip(files, sprints)])
     return sorted(sprints, key=lambda s: (s.start, s.end, s.id))

@@ -132,6 +132,48 @@ def test_legacy_timeoff_is_flattened_and_dropped():
         assert len(s.exec(select(m.MemberDayOff)).all()) == 2
 
 
+def test_yaml_import_derives_slug_from_label(tmp_path):
+    """YAML `id:` is treated as the label; the slug is derived."""
+    from sprint_pulse.db.engine import get_engine, session_scope
+    from sprint_pulse.db import models as m
+    from sprint_pulse.migrate import import_yaml
+    import textwrap
+
+    cfg_yaml = tmp_path / "config.yaml"
+    cfg_yaml.write_text(textwrap.dedent("""\
+        working_days_per_sprint: 10
+
+        jira:
+          site: example.atlassian.net
+          board: "1234"
+
+        roster:
+          - Alice Anderson
+          - Bruno Costa
+
+        orchestration:
+          - Bruno Costa
+
+        name_aliases: {}
+    """))
+    sprints_dir = tmp_path / "sprints"
+    sprints_dir.mkdir()
+    (sprints_dir / "june.yaml").write_text(textwrap.dedent("""\
+        id: June 2026
+        start: 2026-06-01
+        end: 2026-06-12
+        events: []
+        time_off: []
+    """))
+
+    engine = get_engine(":memory:")
+    import_yaml(engine, cfg_yaml, sprints_dir)
+    with session_scope(engine) as s:
+        row = s.get(m.Sprint, "june-2026")
+        assert row is not None
+        assert row.label == "June 2026"
+
+
 def test_label_column_backfills_from_id():
     """An existing sprint row with an empty label is backfilled label = id
     when create_db_and_tables runs again (idempotent upgrade path)."""
