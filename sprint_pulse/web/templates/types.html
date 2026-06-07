@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Types · Sprint Pulse{% endblock %}
+{% block head %}
+<style>
+.palette { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: middle; }
+.swatch-opt { display: inline-flex; cursor: pointer; }
+.swatch-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
+.swatch-opt .swatch-box { display: inline-block; width: 20px; height: 20px; border-radius: 4px; border: 2px solid transparent; }
+.swatch-opt input:checked + .swatch-box { border-color: #111827; box-shadow: 0 0 0 2px #fff inset; }
+.swatch-opt input:focus-visible + .swatch-box { outline: 2px solid #2563eb; outline-offset: 1px; }
+</style>
+{% endblock %}
 {% block content %}
 <h1>Types</h1>
 <p class="subtitle">Event &amp; absence types: their label, abbreviation, and palette color.</p>
@@ -10,10 +20,15 @@
 <span style="display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:-3px;background:{{ color }}"></span>
 {%- endmacro %}
 
-{% macro color_select(selected) %}
-<select name="color">
-  {% for c in palette %}<option value="{{ c }}" {% if c == selected %}selected{% endif %}>{{ c }}</option>{% endfor %}
-</select>
+{% macro color_picker(selected) %}
+<span class="palette">
+  {% for c in palette %}
+  <label class="swatch-opt" title="{{ c }}">
+    <input type="radio" name="color" value="{{ c }}" {% if c == selected %}checked{% endif %} required>
+    <span class="swatch-box" style="background: {{ c }}"></span>
+  </label>
+  {% endfor %}
+</span>
 {%- endmacro %}
 
 <div class="card">
@@ -31,8 +46,8 @@
         <td>
           <form method="post" action="/types/event/{{ t.key }}/update" class="row" style="margin:0">
             <input type="text" name="label" value="{{ t.label }}" required>
-            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" maxlength="2" required style="min-width:60px">
-            {{ color_select(t.color) }}
+            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" minlength="1" maxlength="2" required style="min-width:60px">
+            {{ color_picker(t.color) }}
             <button type="submit" class="secondary">Save</button>
           </form>
         </td>
@@ -49,8 +64,8 @@
   <h2 style="margin-top:20px">Add an event type</h2>
   <form method="post" action="/types/event" class="row">
     <div style="flex:2"><label>Label</label><input type="text" name="label" placeholder="Release freeze" required></div>
-    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" maxlength="2" placeholder="F" required style="min-width:60px"></div>
-    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_select(palette[0]) }}</div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" minlength="1" maxlength="2" placeholder="F" required style="min-width:60px"></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_picker(palette[0]) }}</div>
     <div style="flex:0 0 auto;min-width:auto"><button type="submit">Add</button></div>
   </form>
 </div>
@@ -70,8 +85,8 @@
         <td>
           <form method="post" action="/types/absence/{{ t.key }}/update" class="row" style="margin:0">
             <input type="text" name="label" value="{{ t.label }}" required>
-            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" maxlength="2" required style="min-width:60px">
-            {{ color_select(t.color) }}
+            <input type="text" name="abbreviation" value="{{ t.abbreviation }}" minlength="1" maxlength="2" required style="min-width:60px">
+            {{ color_picker(t.color) }}
             <button type="submit" class="secondary">Save</button>
           </form>
         </td>
@@ -88,8 +103,8 @@
   <h2 style="margin-top:20px">Add an absence type</h2>
   <form method="post" action="/types/absence" class="row">
     <div style="flex:2"><label>Label</label><input type="text" name="label" placeholder="Jury Duty" required></div>
-    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" maxlength="2" placeholder="J" required style="min-width:60px"></div>
-    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_select(palette[0]) }}</div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Abbr.</label><input type="text" name="abbreviation" minlength="1" maxlength="2" placeholder="J" required style="min-width:60px"></div>
+    <div style="flex:0 0 auto;min-width:auto"><label>Color</label>{{ color_picker(palette[0]) }}</div>
     <div style="flex:0 0 auto;min-width:auto"><button type="submit">Add</button></div>
   </form>
 </div>
