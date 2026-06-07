@@ -173,7 +173,7 @@ def test_full_html_css_is_data_driven():
     html = render_full_html(data, cfg)
     assert "#A0CBE8" in html          # custom type color injected into generated CSS
     assert "Jury Duty" in html        # custom type appears in the legend
-    assert "td.jury-duty" in html     # generated per-type CSS rule by key
+    assert "td.ty-jury-duty" in html  # generated per-type CSS rule by key (digit-safe prefix)
 
 
 def test_set_days_accepts_custom_absence_type_rejects_unknown():
@@ -190,3 +190,24 @@ def test_set_days_accepts_custom_absence_type_rejects_unknown():
         tos.set_days(s, member.id, [date(2026, 4, 17)], "jury-duty", "court")
         with pytest.raises(ValidationError):
             tos.set_days(s, member.id, [date(2026, 4, 18)], "bogus", "")
+
+
+def test_leading_digit_type_label_renders_valid_css():
+    from datetime import date
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc, config_service as cfgsvc, sprint_service as spsvc
+    from sprint_pulse.services.sprint_service import build_dashboard_data
+    from sprint_pulse.render import render_full_html
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        cfgsvc.add_member(s, "Alice Anderson")
+        spsvc.create_sprint(s, "2026-16", date(2026, 4, 16), date(2026, 4, 29))
+        t = tsvc.create_event_type(s, "2026 Freeze", "2F", "#A0CBE8")
+        assert t.key == "2026-freeze"           # stored key keeps the digit
+        cfg = cfgsvc.build_config_from_db(s)
+        data = build_dashboard_data(s, cfg)
+    html = render_full_html(data, cfg)
+    assert "td.release.ty-2026-freeze" in html  # valid, prefixed selector
+    assert "swatch ty-2026-freeze" in html      # legend swatch uses prefixed class
+    assert "td.release.2026-freeze" not in html # the invalid bare-digit selector is gone

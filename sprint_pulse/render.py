@@ -34,11 +34,11 @@ def _text_on(bg_hex: str) -> str:
 def _type_css(absence_types, event_types) -> str:
     rules = []
     for t in absence_types:
-        rules.append(f".swatch.{t.key} {{ background: {t.color}; }}")
-        rules.append(f"td.{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
+        rules.append(f".swatch.ty-{t.key} {{ background: {t.color}; }}")
+        rules.append(f"td.ty-{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
     for t in event_types:
-        rules.append(f".swatch.{t.key} {{ background: {t.color}; }}")
-        rules.append(f"td.release.{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
+        rules.append(f".swatch.ty-{t.key} {{ background: {t.color}; }}")
+        rules.append(f"td.release.ty-{t.key} {{ background: {t.color}; color: {_text_on(t.color)}; }}")
     return "\n".join(rules)
 
 
@@ -51,15 +51,15 @@ def calendar_type_css(absence_types) -> str:
     rules = []
     for t in absence_types:
         text = _text_on(t.color)
-        rules.append(f".cal-cell.{t.key} {{ background: {t.color}; color: {text}; }}")
-        rules.append(f".chip.{t.key} {{ background: {t.color}; color: {text}; }}")
+        rules.append(f".cal-cell.ty-{t.key} {{ background: {t.color}; color: {text}; }}")
+        rules.append(f".chip.ty-{t.key} {{ background: {t.color}; color: {text}; }}")
     return "\n".join(rules)
 
 
 def _legend_html(absence_types, event_types) -> str:
     def items(types):
         return "\n".join(
-            f'<div class="legend-item"><div class="swatch {t.key}"></div> '
+            f'<div class="legend-item"><div class="swatch ty-{t.key}"></div> '
             f'{esc(t.abbreviation)} — {esc(t.label)}</div>'
             for t in sorted(types, key=lambda t: t.sort_order)
         )
@@ -200,7 +200,7 @@ def _render_cell(
             cls = e.type
             letter = abs_letter.get(cls, "?")
             title = e.notes or abs_title.get(cls, cls)
-            return f'<td class="cell {cls}" title="{esc(title)}">{letter}</td>', 0
+            return f'<td class="cell ty-{cls}" title="{esc(title)}">{letter}</td>', 0
         return '<td class="excluded" title="Excluded from capacity"></td>', 0
     entries = by_person.get(person, {}).get(d, [])
     if not entries:
@@ -209,7 +209,7 @@ def _render_cell(
     cls = e.type
     letter = abs_letter.get(cls, "?")
     title = e.notes or abs_title.get(cls, cls)
-    return f'<td class="cell {cls}" title="{esc(title)}">{letter}</td>', 1
+    return f'<td class="cell ty-{cls}" title="{esc(title)}">{letter}</td>', 1
 
 
 def render_sprint(
@@ -242,7 +242,7 @@ def render_sprint(
             continue
         sub = ev.kind
         letter = ev_letter.get(ev.kind, "•")
-        rel_cells[col] = f'<td class="release {sub}" title="{esc(ev.title)}">{letter}</td>'
+        rel_cells[col] = f'<td class="release ty-{sub}" title="{esc(ev.title)}">{letter}</td>'
     rows_html.append(
         '<tr class="release-row"><td class="name">Releases</td>'
         + "".join(rel_cells)
