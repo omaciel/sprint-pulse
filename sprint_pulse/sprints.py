@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from sprint_pulse.config import Config
+from sprint_pulse.types_defaults import DEFAULT_EVENT_KEYS
 
 
 def slugify(label: str) -> str:
@@ -39,7 +40,9 @@ HOLIDAY_KEYWORDS = (
     "christmas", "easter", "thanksgiving", "ramadan", "diwali",
 )
 
-EVENT_KINDS = ("tags", "gono", "ga", "freeze", "test")
+# The YAML loader validates against the default key set (no DB at import time).
+# Kept as a sorted tuple alias for callers that want the vocabulary directly.
+EVENT_KINDS = tuple(sorted(DEFAULT_EVENT_KEYS))
 
 
 class SprintError(Exception):
@@ -129,7 +132,7 @@ def working_day_error(d: date, start: date, end: date) -> str | None:
 
 
 def event_kind_error(kind: str) -> str | None:
-    if kind not in EVENT_KINDS:
+    if kind not in DEFAULT_EVENT_KEYS:
         return f'unknown kind "{kind}" (expected {"/".join(EVENT_KINDS)})'
     return None
 

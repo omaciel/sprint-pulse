@@ -36,11 +36,11 @@ def _require_member(session: Session, member_id: int) -> m.TeamMember:
 
 def set_days(session: Session, member_id: int, dates: Iterable[date], type_: str, notes: str = "") -> None:
     """Upsert one MemberDayOff per date (replacing type/notes if present)."""
+    from sprint_pulse.services import type_service
+
     _require_member(session, member_id)
-    if type_ not in VALID_TYPES:
-        raise ValidationError(
-            f'unknown type "{type_}" (expected {"/".join(VALID_TYPES)})', field="type"
-        )
+    if type_ not in type_service.absence_type_keys(session):
+        raise ValidationError(f'unknown absence type "{type_}"', field="type")
     dates = list(dates)
     if not dates:
         raise ValidationError("at least one day is required", field="days")

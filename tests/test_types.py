@@ -115,3 +115,35 @@ def test_delete_missing_type_raises():
     with session_scope(engine) as s:
         with pytest.raises(ValidationError):
             tsvc.delete_event_type(s, "ghost")
+
+
+def test_add_event_accepts_custom_type_rejects_unknown():
+    from datetime import date
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc, sprint_service as spsvc
+    from sprint_pulse.errors import ValidationError
+    import pytest
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        spsvc.create_sprint(s, "2026-16", date(2026, 4, 16), date(2026, 4, 29))
+        tsvc.create_event_type(s, "Webinar", "W", "#A0CBE8")  # key "webinar"
+        spsvc.add_event(s, "2026-16", date(2026, 4, 17), "webinar", "Launch webinar")
+        with pytest.raises(ValidationError):
+            spsvc.add_event(s, "2026-16", date(2026, 4, 20), "nope", "bad")
+
+
+def test_set_days_accepts_custom_absence_type_rejects_unknown():
+    from datetime import date
+    from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+    from sprint_pulse.services import type_service as tsvc, time_off_service as tos, config_service as cfgsvc
+    from sprint_pulse.errors import ValidationError
+    import pytest
+    engine = get_engine(":memory:")
+    create_db_and_tables(engine)
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "Alice Anderson")
+        tsvc.create_absence_type(s, "Jury Duty", "J", "#A0CBE8")  # key "jury-duty"
+        tos.set_days(s, member.id, [date(2026, 4, 17)], "jury-duty", "court")
+        with pytest.raises(ValidationError):
+            tos.set_days(s, member.id, [date(2026, 4, 18)], "bogus", "")

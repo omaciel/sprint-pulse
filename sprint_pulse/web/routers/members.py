@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import Session
 
 from sprint_pulse.errors import ValidationError
-from sprint_pulse.services import config_service, time_off_service
+from sprint_pulse.services import config_service, time_off_service, type_service
 from sprint_pulse.sprints import working_days
 from sprint_pulse.web.deps import get_session, templates
 
@@ -98,7 +98,7 @@ def _calendar_context(session: Session, member_id: int, month: str | None, *, er
         "prev_month": _shift_month(year, mo, -1),
         "next_month": _shift_month(year, mo, 1),
         "weeks": time_off_service.build_month_grid(year, mo, day_map),
-        "types": time_off_service.VALID_TYPES,
+        "absence_types": type_service.list_absence_types(session),
         "summary": time_off_service.member_summary(session, member_id, today),
         "error": error,
     }

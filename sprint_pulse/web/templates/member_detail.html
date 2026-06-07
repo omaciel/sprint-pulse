@@ -6,9 +6,8 @@
 
 <div class="card">
   <div class="palette" id="palette">
-    {% set letters = {"pto":"P","holiday":"H","company":"C","partial":"~","tentative":"?"} %}
-    {% for t in types %}
-      <span class="chip {{ t }}{% if loop.first %} sel{% endif %}" data-type="{{ t }}">{{ letters[t] }} {{ t }}</span>
+    {% for t in absence_types %}
+      <span class="chip {{ t.key }}{% if loop.first %} sel{% endif %}" data-type="{{ t.key }}">{{ t.abbreviation }} {{ t.label }}</span>
     {% endfor %}
     <input type="text" id="cal-notes" placeholder="optional note…" style="flex:1; min-width:140px">
   </div>
@@ -24,7 +23,7 @@
           <div><label>From</label><input type="date" name="start" required></div>
           <div><label>To</label><input type="date" name="end" required></div>
           <div><label>Type</label><select name="type">
-            {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+            {% for t in absence_types %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}</select></div>
           <div style="flex:0 0 auto; min-width:auto"><button type="submit">Add range</button></div>
         </div>
       </form>
