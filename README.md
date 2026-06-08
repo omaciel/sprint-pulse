@@ -72,6 +72,13 @@ what was updated.
 
 ![Sprint Pulse Schedule page with refresh cadence and run-now controls](docs/images/schedule.png)
 
+**Types** — manage the event & absence type vocabularies: each type's label, its
+abbreviation (the letter shown in a cell), and its color (picked from a fixed
+palette). Add, rename, recolor, or delete types — a type still in use can't be
+deleted.
+
+![Sprint Pulse Types page managing event and absence types with color swatches](docs/images/types.png)
+
 ## Requirements
 
 - **Python 3.13+**
