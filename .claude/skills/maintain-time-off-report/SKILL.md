@@ -1,6 +1,6 @@
 ---
 name: maintain-time-off-report
-description: Use when adding time off, adding sprints, managing the team roster, or otherwise updating Sprint Pulse. Sprint Pulse is now a web/desktop app backed by SQLite — edits happen through the UI or its HTTP API. This skill documents the data model, validation rules, and event vocabulary (all still enforced at the service layer).
+description: Use when adding time off, adding sprints, managing the team roster, or otherwise updating Sprint Pulse. Sprint Pulse is now a web/desktop app backed by SQLite — edits happen through the UI or its HTTP API. This skill documents the data model, validation rules, and the (now user-configurable) event & absence types — all enforced at the service layer.
 ---
 
 # Maintain Sprint Pulse
@@ -15,8 +15,10 @@ API. All the validation rules and vocabulary below are enforced in the service l
 
 | Area | Where |
 | --- | --- |
-| Team roster, orchestration | **Team** page (`/members`) |
-| Sprints, events, time off | **Sprints** page (`/sprints`, `/sprints/{id}`) |
+| Team roster, excluded members | **Team** page (`/members`) |
+| A member's time off (calendar) | **Team → a name** (`/members/{id}`) |
+| Sprints + release events | **Sprints** page (`/sprints`, `/sprints/{slug}`) |
+| Event & absence **types** (CRUD) | **Types** page (`/types`) |
 | App settings, Jira connection | **Settings** page (`/config`) |
 | Metric refresh + scheduler | **Schedule** page (`/scheduler`) — see **refresh-sprint-metrics** |
 | One-time YAML import | first-run wizard, or `python3 migrate_yaml_to_sqlite.py` |
@@ -34,36 +36,47 @@ YAML import).
 
 ## Adding Time Off
 
-On a sprint's detail page (`/sprints/{id}`), use the **Time off** form: pick the
-associate (or "Everyone"), a **From**/**To** date range (expanded to working days),
-and notes. Equivalent API call:
+Time off is **per member**, set on that member's availability calendar: open
+**Team → a name** (`/members/{id}`), pick an **absence type** from the dropdown,
+then click weekdays (or use the **From**/**To** range) to mark or clear them.
+Sprints derive their own "who's out" list automatically by date overlap — you don't
+attach time off to a sprint.
 
 ```bash
-curl -X POST http://localhost:8765/sprints/2026-16/timeoff \
-  -d associate="Alice Anderson" -d start=2026-04-24 -d end=2026-04-24 -d notes="PTO"
+# one day
+curl -X POST http://localhost:8765/members/3/timeoff \
+  -d date=2026-04-24 -d type=pto -d notes="PTO"
+# a range (expanded to working days)
+curl -X POST http://localhost:8765/members/3/timeoff \
+  -d start=2026-04-24 -d end=2026-04-28 -d type=holiday -d notes="Easter"
 ```
 
-### Time-off vocabulary
+### Absence types
 
-- **associate** — a roster name, or `__all__` for company-wide (expands to one entry
-  per member). Aliases configured on the Team page resolve to canonical names.
-- **days** — working days (Mon–Fri) within the sprint's `[start, end]`.
-- **notes** — free text; drives the cell color via type inference:
-  - contains `company` → company holiday (purple `C`)
-  - contains `partial` → partial availability (yellow `~`)
-  - contains `tentative` → tentative (yellow striped `?`)
-  - contains a holiday keyword (`holiday`, `Memorial Day`, `Pentecost`, `Liberation`,
-    `Victoria`, `Independence`, `Easter`, …) → holiday (blue `H`)
-  - otherwise → PTO (red `P`)
+`type` must be the **key** of an existing absence type. The defaults seeded on first
+run (manage them on the **Types** page, `/types`):
 
-If an absence spans multiple types, add separate entries.
+| Key | Letter | Default meaning |
+| --- | --- | --- |
+| `pto` | P | PTO |
+| `holiday` | H | Regional / national holiday |
+| `company` | C | Company holiday |
+| `partial` | ~ | Partial availability |
+| `tentative` | ? | Tentative |
+
+Add / rename / recolor (from a fixed palette) / delete absence types on **Types**.
+Each type's **color** drives its cell on the dashboard and calendar; its
+**abbreviation** is the letter shown in the cell. `notes` is free text (shown on
+hover) and **does not** set the type — you pick the type explicitly. (Keyword
+inference from notes still applies to the one-time **YAML import** only.)
 
 ## Adding a Release Event
 
-On the sprint detail page use the **Release events** form. `kind` is a closed
-vocabulary:
+On the sprint detail page use the **Release events** form. `kind` must be the **key**
+of an existing **event type**. Defaults seeded on first run (manage on **Types**,
+`/types`):
 
-| Kind | Letter | Meaning |
+| Key | Letter | Default meaning |
 | --- | --- | --- |
 | `tags` | T | Git tags due |
 | `gono` | G | Go/No-Go deadline |
@@ -71,20 +84,23 @@ vocabulary:
 | `freeze` | F | Release freeze |
 | `test` | X | Testathon |
 
-Sprint header bullets are auto-derived from event titles + dates.
+Add / rename / recolor / delete event types on **Types**. Sprint header bullets are
+auto-derived from event titles + dates.
 
 ## Adding a Sprint
 
 Two ways on the **Sprints** page:
 
-- **Import from Jira** (preferred) — lists every sprint on the configured board
-  (any name), suggests a short id (`2026-16`) you can edit, and imports the ones you
-  tick; start/end dates come from Jira. Each imported sprint stores its Jira numeric
-  id, so metrics refresh matches by id regardless of the board's naming. Sprints with
-  no dates in Jira must be added manually.
-- **Add manually** — enter an `id` label (e.g. `2026-28`; letters, numbers, `.`, `_`,
-  `-`, no spaces) and start/end dates. Sprints are 14 calendar days (10 working days)
-  by convention, and are ordered on the dashboard by their dates (not by id).
+- **Import from Jira** (when Jira is configured) — lists every sprint on the board
+  (any name), suggests a short label you can edit, and imports the ones you tick;
+  start/end dates come from Jira. Each imported sprint stores its Jira numeric id, so
+  metrics refresh matches by id regardless of the board's naming. Sprints with no
+  dates in Jira must be added manually. Jira is **optional** — the app is fully usable
+  without it.
+- **Add manually** — enter a free-form **name** (e.g. `June 2026` or `2026-28`); a
+  URL-safe **slug id** is derived automatically (`june-2026`) and used in the URL.
+  Set start/end dates. Sprints are 14 calendar days (10 working days) by convention
+  and are ordered on the dashboard by their dates (not by id).
 
 ## Removing / archiving
 
@@ -97,12 +113,12 @@ Two ways on the **Sprints** page:
 
 ## Validation (enforced at the service layer)
 
-- Sprint `id` is unique; `end >= start`.
+- Sprint **slug id** (derived from the name) is unique; `end >= start`.
 - Event/time-off dates must be working days within `[start, end]`.
-- Event `kind` must be in the closed vocabulary above.
+- Event `kind` and time-off `type` must be existing types (see the **Types** page).
 - Associates must be on the roster (or `__all__`); unknown names return a Levenshtein
   suggestion (e.g. `unknown associate "Alice Andersen" (typo? did you mean "Alice Anderson")`).
-- Roster names are unique; orchestration members are a subset of the roster; alias
+- Roster names are unique; **excluded** members are a subset of the roster; alias
   targets must be existing members.
 
 ## Effective Team & Capacity
@@ -110,20 +126,22 @@ Two ways on the **Sprints** page:
 Set on the Team + Settings pages:
 
 - **roster** — all members, in display order.
-- **orchestration** — members excluded from availability (gray cells, 0 capacity).
+- **excluded** — members who don't count toward capacity (shown gray). Toggle per
+  member on the Team page (`is_excluded`).
 - **working_days_per_sprint** — default 10 (Settings).
 - **aliases** — alternate name → canonical member.
 
-Capacity = `(len(roster) − len(orchestration)) × working_days_per_sprint`
+Capacity = `(len(roster) − len(excluded)) × working_days_per_sprint`
 Availability = `(Capacity − Days Out) / Capacity × 100`, one decimal.
 
 ## Common Mistakes
 
 - **Editing the old `data/*.yaml`.** Those are import-only now; changes there won't
   appear. Edit through the app.
-- **Empty notes for a regional holiday.** Leaves the cell as PTO — always include the
-  holiday name (e.g. "Czech Republic holiday").
-- **Mixing types in one entry.** Split into separate entries by type.
+- **Expecting notes to set the absence type.** In the app the **type** you pick (not
+  the notes text) sets the color/letter — choose Holiday / Company / etc. explicitly.
+  (Notes-keyword inference only applies to the one-time YAML import.)
+- **Mixing types on one day.** A member has one absence type per day; pick the right one.
 - **Non-working-day dates.** Weekends fail validation — only Mon–Fri.
 
 ## Related

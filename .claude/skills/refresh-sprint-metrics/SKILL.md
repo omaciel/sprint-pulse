@@ -30,9 +30,12 @@ also enable automatic refresh on an interval or cron there.
 curl -X POST http://localhost:8765/scheduler/run
 ```
 
-The scheduler runs the same pipeline (`sprint_pulse/services/refresh.py`):
-matches each sprint by its Jira name (`Wisdom <id>`), fetches state + metrics, and
-writes `done_n`, `tot_n`, `done_sp`, `tot_sp`, and `jira_state` onto the sprint row.
+The scheduler runs the same pipeline (`sprint_pulse/services/refresh.py`): for each
+sprint it resolves a Jira sprint by the stored Jira id (set on import) first, then
+falls back to a `{team_name} {label}` name match; on a hit it fetches state + metrics
+and writes `done_n`, `tot_n`, `done_sp`, `tot_sp`, and `jira_state` onto the sprint
+row. Sprints that resolve to nothing are skipped silently, and "no matching sprints"
+is reported as `ok` (nothing to update) — not an error. Jira is optional.
 
 ## Prerequisites
 
@@ -47,8 +50,9 @@ writes `done_n`, `tot_n`, `done_sp`, `tot_sp`, and `jira_state` onto the sprint 
 
 If the numbers don't match expectations, check that:
 - The sprint is on the configured Scrum board (**Settings → Board id**).
-- The sprint `id` matches the Jira sprint name's trailing token (`2026-18` ↔
-  `Wisdom 2026-18`).
+- The sprint is linked to Jira — either imported from the board (so it stores the
+  Jira id), or its name matches `{team_name} {label}` (e.g. `My Team 2026-18`).
+  Unlinked sprints are skipped (not an error); re-import them to attach a Jira id.
 
 ## Related
 

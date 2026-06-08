@@ -21,14 +21,18 @@ you control.
 
 - Sprint navigator with state badges (active / future / closed)
 - One sprint heatmap at a time — team members × working days
-- Cell vocabulary: PTO, regional holidays, company holidays, partial availability,
-  tentative, and "on Orchestration" carve-outs
-- Release-event row (git tags, Go/No-Go, GA, freeze, testathon)
+- Cell vocabulary: a **configurable set of absence types** (PTO, regional/company
+  holidays, partial, tentative by default), plus **Excluded** members who are shown
+  gray and don't count toward capacity
+- Release-event row driven by **configurable event types** (git tags, Go/No-Go,
+  GA, freeze, testathon by default)
+- A **Types** page to manage both vocabularies — add / rename / recolor (from a
+  fixed palette) / delete event & absence types
 - Per-sprint availability % and a per-associate summary
 
 Time off is managed **per person**: open **Team → a name** for that member's
-availability **calendar** — pick a type (PTO / holiday / company / partial /
-tentative) and click weekdays to mark or clear them. Sprints derive their own
+availability **calendar** — pick an absence type (the defaults, or any you've added
+on the **Types** page) and click weekdays to mark or clear them. Sprints derive their own
 "who's out" list automatically from those dates, so editing a sprint is just its
 dates and release events.
 
@@ -38,9 +42,9 @@ dates and release events.
 > sample data (no Jira or credentials required).
 
 **Dashboard** — one sprint's availability heatmap: team members × working days,
-colored time-off cells (PTO / holiday / company / partial / tentative), the
-release-event row, the per-sprint availability %, and a sidebar with the sprint
-navigator and legend.
+colored absence cells (from the configurable absence types), the release-event
+row, the per-sprint availability %, and a sidebar with the sprint navigator and
+legend.
 
 ![Sprint Pulse dashboard — a sprint availability heatmap with legend and sprint navigator](docs/images/dashboard.png)
 
@@ -50,11 +54,11 @@ click.
 
 ![Sprint Pulse first-run welcome screen with guided setup and YAML import](docs/images/welcome.png)
 
-**Team** — manage the roster, toggle **Orchestration** (always shown gray and
-excluded from capacity), and click any name to open that member's availability
+**Team** — manage the roster, toggle **Excluded** (shown gray and not counted
+toward capacity), and click any name to open that member's availability
 calendar.
 
-![Sprint Pulse Team page showing the roster with orchestration toggles](docs/images/team.png)
+![Sprint Pulse Team page showing the roster with excluded-member toggles](docs/images/team.png)
 
 **Sprints** — import sprints from Jira or add them manually; each row shows its
 dates, Jira state, and cached ticket / story-point metrics. Archive a sprint to
@@ -258,8 +262,14 @@ sprint-pulse/
 ```bash
 make test     # pytest
 make lint     # ruff
+make check    # lint + tests (the CI gate)
+make hooks    # install the pre-push hook (runs `make check` before each push)
 make help     # list every target
 ```
+
+> Run `make hooks` once after cloning. It points `core.hooksPath` at `.githooks/`,
+> so every `git push` runs `make check` first and a push that would fail CI is
+> blocked locally (bypass in an emergency with `git push --no-verify`).
 
 ## Working with Claude Code
 
