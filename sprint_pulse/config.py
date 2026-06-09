@@ -1,6 +1,8 @@
 """Config loader: data/config.yaml -> Config dataclass."""
 from __future__ import annotations
 
+import ipaddress
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,55 @@ def normalize_site(site: str) -> str:
         s = s.split("://", 1)[1]
     s = s.split("/", 1)[0]  # drop any path
     return s.strip().rstrip("/")
+
+
+# Hosts we're willing to send Jira Basic-auth credentials to. The client puts the
+# token in an Authorization header on https://{site}/..., so an unrestricted site
+# means the token is handed to whoever controls that host (credential exfiltration
+# via a forged "site"). Default to Atlassian Cloud; operators self-hosting Jira
+# add their host via SPRINT_PULSE_JIRA_ALLOWED_HOSTS (a trusted env value).
+_DEFAULT_ALLOWED_HOSTS = "*.atlassian.net"
+
+
+def _allowed_host_patterns() -> list[str]:
+    raw = os.environ.get("SPRINT_PULSE_JIRA_ALLOWED_HOSTS", _DEFAULT_ALLOWED_HOSTS)
+    return [p.strip().lower() for p in raw.split(",") if p.strip()]
+
+
+def _host_matches(host: str, pattern: str) -> bool:
+    if pattern.startswith("*."):
+        suffix = pattern[1:]  # ".atlassian.net"
+        return host == pattern[2:] or host.endswith(suffix)
+    return host == pattern
+
+
+def validate_site(site: str) -> str:
+    """Return the normalized host if it's an allowed Jira target; raise otherwise.
+
+    This is the security chokepoint that prevents credential exfiltration: never
+    let the client send the token to an arbitrary or internal host. Rejects
+    private/loopback/link-local IPs and any host not on the allowlist.
+    """
+    host = normalize_site(site)
+    if not host:
+        raise ConfigError("Jira site is required")
+    bare = host.split(":", 1)[0].lower()  # strip :port; hostnames are case-insensitive
+
+    # An IP literal must be a public address — block loopback/private/link-local
+    # so a forged site can't point the credentialed request at internal services.
+    try:
+        if not ipaddress.ip_address(bare).is_global:
+            raise ConfigError(f"Jira site {host!r} is not a public address")
+    except ValueError:
+        pass  # not an IP literal — fall through to the hostname allowlist
+
+    patterns = _allowed_host_patterns()
+    if any(_host_matches(bare, pat) for pat in patterns):
+        return host
+    raise ConfigError(
+        f"Jira site {host!r} is not in the allowed-hosts list "
+        f"(set SPRINT_PULSE_JIRA_ALLOWED_HOSTS to permit it)"
+    )
 
 
 @dataclass(frozen=True)

@@ -21,7 +21,7 @@ from sqlmodel import Session, select
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.migrate import MigrationError, import_yaml
-from sprint_pulse.services import config_service, jira_service, secrets
+from sprint_pulse.services import config_service, jira_service
 from sprint_pulse.web.deps import get_session, templates
 
 router = APIRouter()
@@ -44,11 +44,22 @@ def setup_page(request: Request, session: Session = Depends(get_session)):
     )
 
 
+def _wizard_form(settings: m.Settings) -> dict:
+    """Field values for the wizard form, sourced from current settings."""
+    return {
+        "working_days_per_sprint": settings.working_days_per_sprint,
+        "team_name": settings.team_name or "My Team",
+        "jira_site": settings.jira_site or "",
+        "jira_board": settings.jira_board or "",
+        "jira_username": settings.jira_username or "",
+    }
+
+
 @router.get("/setup/wizard", response_class=HTMLResponse)
 def wizard_step1(request: Request, session: Session = Depends(get_session)):
     settings = config_service.get_settings(session)
     return templates.TemplateResponse(
-        request, "setup/wizard.html", {"active": "", "settings": settings}
+        request, "setup/wizard.html", {"active": "", "settings": settings, "form": _wizard_form(settings)}
     )
 
 
@@ -63,15 +74,33 @@ def wizard_step1_save(
     jira_token: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    config_service.apply_jira_settings(
-        session,
-        working_days_per_sprint=working_days_per_sprint,
-        team_name=team_name,
-        jira_site=jira_site,
-        jira_board=jira_board,
-        jira_username=jira_username,
-        jira_token=jira_token,
-    )
+    try:
+        config_service.apply_jira_settings(
+            session,
+            working_days_per_sprint=working_days_per_sprint,
+            team_name=team_name,
+            jira_site=jira_site,
+            jira_board=jira_board,
+            jira_username=jira_username,
+            jira_token=jira_token,
+        )
+    except ValidationError as e:
+        session.rollback()
+        settings = config_service.get_settings(session)
+        # Re-render with the user's submitted values so a rejected host (or other
+        # validation error) doesn't wipe the form back to defaults.
+        submitted = {
+            "working_days_per_sprint": working_days_per_sprint,
+            "team_name": team_name,
+            "jira_site": jira_site,
+            "jira_board": jira_board,
+            "jira_username": jira_username,
+        }
+        return templates.TemplateResponse(
+            request,
+            "setup/wizard.html",
+            {"active": "", "settings": settings, "form": submitted, "error": e.display()},
+        )
     # Step 2 of the wizard is "import sprints" (the shared import page in wizard mode).
     return RedirectResponse("/sprints/import?wizard=1", status_code=303)
 
@@ -84,8 +113,19 @@ def wizard_test(
     jira_username: str = Form(""),
     jira_token: str = Form(""),
 ):
-    """Test the entered (not-yet-saved) credentials."""
-    token = jira_token.strip() or secrets.get_token(secrets.detect_backend(), jira_username.strip())
+    """Test the entered (not-yet-saved) credentials.
+
+    The token must be supplied explicitly: we deliberately do NOT fall back to the
+    stored/env token here. Falling back would let an unauthenticated caller test an
+    arbitrary `jira_site` using the operator's real token, leaking it to that host.
+    """
+    token = jira_token.strip()
+    if not token:
+        return templates.TemplateResponse(
+            request,
+            "partials/_conn_result.html",
+            {"message": "Enter a token to test the connection.", "ok": False},
+        )
     msg, ok = jira_service.probe(
         jira_site.strip(), jira_board.strip(), jira_username.strip(), token
     )
