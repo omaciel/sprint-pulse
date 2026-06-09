@@ -102,6 +102,30 @@ def test_wizard_test_blank_token_does_not_leak(client):
     JC.assert_not_called()
 
 
+def test_wizard_save_forged_host_keeps_submitted_values(client):
+    # A rejected host re-renders the wizard with an error AND preserves the
+    # other values the user entered (no reset to defaults).
+    r = client.post(
+        "/setup/wizard",
+        data={
+            "working_days_per_sprint": "7",
+            "team_name": "Wisdom",
+            "jira_site": "evil.attacker.com",
+            "jira_board": "42",
+            "jira_username": "me@x.com",
+            "jira_token": "",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code == 200  # re-rendered, not redirected
+    assert "allowed-hosts" in r.text
+    assert 'value="7"' in r.text
+    assert 'value="Wisdom"' in r.text
+    assert 'value="evil.attacker.com"' in r.text
+    assert 'value="42"' in r.text
+    assert 'value="me@x.com"' in r.text
+
+
 def test_wizard_test_forged_host_rejected_with_token(client):
     with patch("sprint_pulse.services.jira_service.JiraClient") as JC:
         r = client.post(

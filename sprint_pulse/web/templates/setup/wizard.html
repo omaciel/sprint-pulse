@@ -13,11 +13,12 @@
     <div class="row">
       <div>
         <label for="wd">Working days per sprint</label>
-        <input type="number" id="wd" name="working_days_per_sprint" min="1" max="30" value="10" required>
+        <input type="number" id="wd" name="working_days_per_sprint" min="1" max="30"
+               value="{{ form.working_days_per_sprint }}" required>
       </div>
       <div>
         <label for="team">Team name</label>
-        <input type="text" id="team" name="team_name" value="My Team" required>
+        <input type="text" id="team" name="team_name" value="{{ form.team_name }}" required>
       </div>
     </div>
     <p class="muted" style="margin-top:8px">Used as the dashboard title and the Jira sprint-name
@@ -29,15 +30,18 @@
     <div class="row">
       <div>
         <label for="site">Site</label>
-        <input type="text" id="site" name="jira_site" placeholder="your-org.atlassian.net">
+        <input type="text" id="site" name="jira_site" placeholder="your-org.atlassian.net"
+               value="{{ form.jira_site }}">
       </div>
       <div>
         <label for="board">Board id</label>
-        <input type="text" id="board" name="jira_board" placeholder="1234">
+        <input type="text" id="board" name="jira_board" placeholder="1234"
+               value="{{ form.jira_board }}">
       </div>
     </div>
     <label for="user">Username (email)</label>
-    <input type="text" id="user" name="jira_username" placeholder="you@example.com">
+    <input type="text" id="user" name="jira_username" placeholder="you@example.com"
+           value="{{ form.jira_username }}">
     <label for="token">API token</label>
     <input type="password" id="token" name="jira_token" autocomplete="off">
     <p style="margin-top:12px">
