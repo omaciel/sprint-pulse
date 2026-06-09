@@ -5,6 +5,8 @@
 <h1>App settings & Jira</h1>
 <p class="subtitle">You can change all of this later under Settings.</p>
 
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
 <form method="post" action="/setup/wizard">
   <div class="card">
     <h2>App</h2>

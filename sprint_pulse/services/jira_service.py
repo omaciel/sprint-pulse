@@ -5,7 +5,7 @@ import os
 
 from sqlmodel import Session
 
-from sprint_pulse.config import JiraConfig
+from sprint_pulse.config import ConfigError, JiraConfig, validate_site
 from sprint_pulse.jira import JiraClient, JiraUnavailable
 from sprint_pulse.services import config_service, secrets
 
@@ -28,6 +28,11 @@ def probe(site: str, board: str, username: str, token: str | None) -> tuple[str,
         return f"Connected to mock Jira (demo) — {n} sprints.", True
     if not (site and board and username and token):
         return "Fill in site, board, username, and token first.", False
+    # Don't send the token to a forged/internal host (credential exfiltration).
+    try:
+        site = validate_site(site)
+    except ConfigError as e:
+        return str(e), False
     client = JiraClient(JiraConfig(site=site, board=board), username, token)
     try:
         sprints = client.fetch_sprints()
@@ -50,8 +55,14 @@ def make_client(session: Session):
     token = secrets.get_token(settings.token_ref, settings.jira_username)
     if not (settings.jira_site and settings.jira_board and settings.jira_username and token):
         return None
+    # Defense in depth: never hand the token to a host that isn't allowlisted,
+    # even if a bad value reached the DB (e.g. an older row or a YAML import).
+    try:
+        site = validate_site(settings.jira_site)
+    except ConfigError:
+        return None
     return JiraClient(
-        JiraConfig(site=settings.jira_site, board=settings.jira_board),
+        JiraConfig(site=site, board=settings.jira_board),
         settings.jira_username,
         token,
     )

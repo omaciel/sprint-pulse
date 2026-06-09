@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from sprint_pulse.config import Config, JiraConfig, TypeDef, normalize_site
+from sprint_pulse.config import Config, ConfigError, JiraConfig, TypeDef, validate_site
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.services import secrets, type_service
@@ -99,8 +99,20 @@ def apply_jira_settings(
     """
     username = (jira_username or "").strip()
     token_ref = secrets.detect_backend()
+    # A blank site means "Jira not configured yet" (the wizard saves partial
+    # settings before connecting). A non-blank site is validated before we persist
+    # it — the saved host is later used to send Basic-auth credentials, so refusing
+    # a forged/internal host here is a security boundary.
+    raw_site = (jira_site or "").strip()
+    if raw_site:
+        try:
+            site = validate_site(raw_site)
+        except ConfigError as e:
+            raise ValidationError(str(e), field="jira_site") from e
+    else:
+        site = ""
     fields: dict = {
-        "jira_site": normalize_site(jira_site),
+        "jira_site": site,
         "jira_board": (jira_board or "").strip(),
         "jira_username": username,
         "token_ref": token_ref,
