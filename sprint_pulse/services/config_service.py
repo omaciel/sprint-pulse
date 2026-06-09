@@ -23,9 +23,12 @@ def get_settings(session: Session) -> m.Settings:
 
 
 def list_members(session: Session) -> list[m.TeamMember]:
-    return list(
-        session.exec(select(m.TeamMember).order_by(m.TeamMember.sort_order, m.TeamMember.id)).all()
-    )
+    # Display order is alphabetical by first name ascending. Names are stored as
+    # a single "First Last" field, so a case-insensitive sort on the full string
+    # orders by first name (with last name as the natural tiebreaker). This is the
+    # single source of truth for the Team page and the dashboard roster.
+    members = session.exec(select(m.TeamMember)).all()
+    return sorted(members, key=lambda member: member.name.casefold())
 
 
 def is_empty(session: Session) -> bool:

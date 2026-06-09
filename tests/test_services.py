@@ -37,6 +37,22 @@ def test_build_config_from_db_matches_yaml(engine):
     assert cfg.name_aliases["Alyce Anderson"] == "Alice Anderson"
 
 
+def test_list_members_sorted_by_first_name(engine):
+    # Fixture roster is intentionally unsorted; display must be alphabetical
+    # by first name (full-name string) ascending, case-insensitively.
+    with session_scope(engine) as s:
+        names = [member.name for member in cfgsvc.list_members(s)]
+    assert names == sorted(names, key=str.casefold)
+    assert names[0] == "Alice Anderson"
+    assert names[-1] == "Mei Lin"
+
+
+def test_roster_hydrated_alphabetically(engine):
+    with session_scope(engine) as s:
+        cfg = cfgsvc.build_config_from_db(s)
+    assert cfg.roster == sorted(cfg.roster, key=str.casefold)
+
+
 def test_add_member_rejects_duplicate(engine):
     with session_scope(engine) as s:
         with pytest.raises(ValidationError):
