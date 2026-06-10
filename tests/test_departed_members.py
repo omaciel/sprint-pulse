@@ -2,7 +2,10 @@
 import pytest
 from datetime import date
 
-from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps
+from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps, TypeDef
+from sprint_pulse.render import render_sprint
+from sprint_pulse.sprints import Sprint
+from sprint_pulse.types_defaults import DEFAULT_ABSENCE_TYPES, DEFAULT_EVENT_TYPES
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
 from sprint_pulse.errors import ValidationError
@@ -243,3 +246,47 @@ def test_nonstandard_sprint_length_uses_setting_not_day_count(engine):
     # Alice covers all 12 days -> contributes the setting (10, not 12);
     # Bob covers 11 of 12 -> min(11, 10) == 10.
     assert by_id["long-one"].capacity == 20
+
+
+_METRICS = {"done_n": 0, "tot_n": 0, "done_sp": 0, "tot_sp": 0}
+
+
+def _render_cfg(**kw) -> Config:
+    base = dict(
+        working_days_per_sprint=10,
+        jira=JiraConfig(site="x", board="1"),
+        roster=["Alice Anderson", "Bob Brown"],
+        excluded=set(),
+        name_aliases={},
+        event_types=tuple(TypeDef(**r) for r in DEFAULT_EVENT_TYPES),
+        absence_types=tuple(TypeDef(**r) for r in DEFAULT_ABSENCE_TYPES),
+    )
+    base.update(kw)
+    return Config(**base)
+
+
+def test_out_of_tenure_days_render_inactive_cells():
+    sprint = Sprint(
+        id="2026-22", label="2026-22",
+        start=date(2026, 5, 25), end=date(2026, 6, 7),
+        events=(), time_off=(),
+    )
+    cfg = _render_cfg(
+        tenures={"Bob Brown": (None, date(2026, 5, 27))},  # leaves Wed of week 1
+        capacity_override=13,
+    )
+    html, _ = render_sprint(sprint, cfg, metrics=_METRICS, state="closed")
+    assert html.count('class="inactive"') == 7  # 10 working days - 3 in tenure
+    assert "Bob Brown" in html
+    # availability uses the prorated capacity: 0 days out of 13
+    assert "100.0%" in html
+
+
+def test_no_tenures_renders_no_inactive_cells():
+    sprint = Sprint(
+        id="2026-22", label="2026-22",
+        start=date(2026, 5, 25), end=date(2026, 6, 7),
+        events=(), time_off=(),
+    )
+    html, _ = render_sprint(sprint, _render_cfg(), metrics=_METRICS, state="closed")
+    assert 'class="inactive"' not in html

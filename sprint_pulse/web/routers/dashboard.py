@@ -21,7 +21,12 @@ def dashboard(session: Session = Depends(get_session)):
     if data:
         # Render whenever there are (active) sprints — even before a team exists;
         # the heatmap just has no member rows yet and availability shows n/a.
-        return HTMLResponse(inject_app_bar(render_full_html(data, cfg), active="/"))
+        cfg_by_sprint = sprint_service.build_sprint_configs(session, cfg)
+        return HTMLResponse(
+            inject_app_bar(
+                render_full_html(data, cfg, cfg_by_sprint=cfg_by_sprint), active="/"
+            )
+        )
 
     has_members = not config_service.is_empty(session)
     has_sprints = session.exec(select(m.Sprint)).first() is not None
