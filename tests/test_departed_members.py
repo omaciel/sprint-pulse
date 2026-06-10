@@ -1,8 +1,4 @@
 """Departed-member feature: tenure columns, helpers, services, rendering."""
-from datetime import date
-
-import pytest
-
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
 
