@@ -7,6 +7,7 @@ from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.services import config_service as cfgsvc
+from sprint_pulse.services import sprint_service as spsvc
 from sprint_pulse.services import time_off_service as tosvc
 
 
@@ -153,3 +154,71 @@ def test_set_days_rejects_dates_outside_tenure(engine):
         with pytest.raises(ValidationError, match="tenure"):
             tosvc.set_days(s, mid, [date(2026, 6, 8)], "pto")  # after they left
         tosvc.set_days(s, mid, [date(2026, 6, 3)], "pto")  # inside tenure: OK
+
+
+@pytest.fixture
+def team_engine():
+    """Two members, two 14-day sprints (10 working days each)."""
+    eng = get_engine(":memory:")
+    create_db_and_tables(eng)
+    with session_scope(eng) as s:
+        cfgsvc.add_member(s, "Alice Anderson")
+        cfgsvc.add_member(s, "Bob Brown")
+        spsvc.create_sprint(s, "2026-22", date(2026, 5, 25), date(2026, 6, 7))
+        spsvc.create_sprint(s, "2026-24", date(2026, 6, 8), date(2026, 6, 21))
+    return eng
+
+
+def test_dateless_roster_reproduces_current_numbers(team_engine):
+    with session_scope(team_engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    for cfg in by_id.values():
+        assert cfg.roster == ["Alice Anderson", "Bob Brown"]
+        assert cfg.capacity == 20  # 2 x 10, identical to pre-feature math
+        assert cfg.tenures == {}
+
+
+def test_departed_member_dropped_from_later_sprints(team_engine):
+    with session_scope(team_engine) as s:
+        bob = next(mm for mm in cfgsvc.list_members(s) if mm.name == "Bob Brown")
+        cfgsvc.depart_member(s, bob.id, date(2026, 6, 7))  # leaves at sprint boundary
+    with session_scope(team_engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    assert "Bob Brown" in by_id["2026-22"].roster
+    assert by_id["2026-22"].capacity == 20  # covered every working day
+    assert "Bob Brown" not in by_id["2026-24"].roster
+    assert by_id["2026-24"].capacity == 10
+
+
+def test_mid_sprint_departure_prorates_capacity(team_engine):
+    with session_scope(team_engine) as s:
+        bob = next(mm for mm in cfgsvc.list_members(s) if mm.name == "Bob Brown")
+        # Wed of week 1 of sprint 2026-22 -> 3 in-tenure working days (Mon-Wed)
+        cfgsvc.depart_member(s, bob.id, date(2026, 5, 27))
+    with session_scope(team_engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    assert by_id["2026-22"].capacity == 13  # Alice 10 + Bob 3
+    assert by_id["2026-22"].tenures["Bob Brown"] == (None, date(2026, 5, 27))
+
+
+def test_mid_sprint_join_prorates_capacity(team_engine):
+    with session_scope(team_engine) as s:
+        # Joins Thu of week 2 of sprint 2026-24 -> 2 in-tenure working days
+        cfgsvc.add_member(s, "New Hire", start_date=date(2026, 6, 18))
+    with session_scope(team_engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    assert "New Hire" not in by_id["2026-22"].roster
+    assert by_id["2026-22"].capacity == 20
+    assert "New Hire" in by_id["2026-24"].roster
+    assert by_id["2026-24"].capacity == 22  # 10 + 10 + 2
+
+
+def test_excluded_member_contributes_zero_even_with_tenure(team_engine):
+    with session_scope(team_engine) as s:
+        bob = next(mm for mm in cfgsvc.list_members(s) if mm.name == "Bob Brown")
+        cfgsvc.toggle_excluded(s, bob.id)
+        cfgsvc.depart_member(s, bob.id, date(2026, 5, 27))
+    with session_scope(team_engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    assert by_id["2026-22"].capacity == 10  # only Alice counts
+    assert "Bob Brown" in by_id["2026-22"].excluded
