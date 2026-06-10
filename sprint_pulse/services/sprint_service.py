@@ -126,6 +126,7 @@ def _sprint_config(
         if mm.start_date is not None or mm.end_date is not None
     }
     days = working_days(start, end)
+    n_days = len(days)
     capacity = 0
     for mm in present:
         if mm.is_excluded:
@@ -135,7 +136,7 @@ def _sprint_config(
             capacity += cfg.working_days_per_sprint
             continue
         in_days = sum(1 for d in days if in_tenure(tenure, d))
-        if in_days == len(days):  # covers the whole sprint -> classic contribution
+        if in_days == n_days:  # covers the whole sprint -> classic contribution
             capacity += cfg.working_days_per_sprint
         else:
             capacity += min(in_days, cfg.working_days_per_sprint)

@@ -222,3 +222,24 @@ def test_excluded_member_contributes_zero_even_with_tenure(team_engine):
         by_id = spsvc.build_sprint_configs(s)
     assert by_id["2026-22"].capacity == 10  # only Alice counts
     assert "Bob Brown" in by_id["2026-22"].excluded
+
+
+def test_nonstandard_sprint_length_uses_setting_not_day_count(engine):
+    """Capacity contributions are bounded by working_days_per_sprint, not the
+    sprint's actual working-day count (12 here)."""
+    import warnings as _warnings
+
+    with session_scope(engine) as s:
+        cfgsvc.add_member(s, "Alice Anderson")
+        cfgsvc.add_member(s, "Bob Brown")
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")  # 16-day sprint warns about length
+            spsvc.create_sprint(s, "long-one", date(2026, 6, 22), date(2026, 7, 7))
+    with session_scope(engine) as s:
+        bob = next(mm for mm in cfgsvc.list_members(s) if mm.name == "Bob Brown")
+        cfgsvc.depart_member(s, bob.id, date(2026, 7, 6))  # 11 of 12 working days
+    with session_scope(engine) as s:
+        by_id = spsvc.build_sprint_configs(s)
+    # Alice covers all 12 days -> contributes the setting (10, not 12);
+    # Bob covers 11 of 12 -> min(11, 10) == 10.
+    assert by_id["long-one"].capacity == 20
