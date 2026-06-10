@@ -2,6 +2,8 @@
 import pytest
 from datetime import date
 
+from fastapi.testclient import TestClient
+
 from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps, TypeDef
 from sprint_pulse.render import render_sprint
 from sprint_pulse.sprints import Sprint, TimeOffEntry
@@ -12,6 +14,7 @@ from sprint_pulse.errors import ValidationError
 from sprint_pulse.services import config_service as cfgsvc
 from sprint_pulse.services import sprint_service as spsvc
 from sprint_pulse.services import time_off_service as tosvc
+from sprint_pulse.web.app import create_app
 
 
 def test_teammember_has_tenure_fields():
@@ -317,3 +320,33 @@ def test_stale_time_off_outside_tenure_renders_inactive():
     assert "stale import row" not in html        # the entry is not rendered at all
     assert days_out["Bob Brown"] == 0
     assert "100.0%" in html                      # days out stayed 0 against capacity 13
+
+
+# ---------------------------------------------------------------------------
+# Route tests (Task 7): depart / rejoin / join-date on add
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def client_with_team():
+    app = create_app(":memory:")
+    with session_scope(app.state.engine) as s:
+        cfgsvc.add_member(s, "Alice Anderson")  # id 1 on a fresh DB
+    return TestClient(app)
+
+
+def test_depart_and_rejoin_routes(client_with_team):
+    resp = client_with_team.post("/members/1/depart", data={"end_date": "2026-05-29"})
+    assert resp.status_code == 200
+    assert "Former members" in resp.text
+    resp = client_with_team.post("/members/1/rejoin")
+    assert resp.status_code == 200
+    assert "Former members" not in resp.text
+
+
+def test_add_member_route_accepts_start_date(client_with_team):
+    resp = client_with_team.post(
+        "/members", data={"name": "New Hire", "start_date": "2026-06-01"}
+    )
+    assert resp.status_code == 200
+    assert "New Hire" in resp.text

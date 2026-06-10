@@ -21,7 +21,7 @@ def _table(request: Request, session: Session, error: str = "") -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "partials/_members_table.html",
-        {"members": members, "error": error},
+        {"members": members, "error": error, "today": date.today().isoformat()},
     )
 
 
@@ -29,7 +29,9 @@ def _table(request: Request, session: Session, error: str = "") -> HTMLResponse:
 def members_page(request: Request, session: Session = Depends(get_session)):
     members = config_service.list_members(session)
     return templates.TemplateResponse(
-        request, "members.html", {"members": members, "active": "/members"}
+        request,
+        "members.html",
+        {"members": members, "active": "/members", "today": date.today().isoformat()},
     )
 
 
@@ -38,10 +40,15 @@ def add_member(
     request: Request,
     name: str = Form(...),
     is_excluded: bool = Form(False),
+    start_date: str = Form(""),
     session: Session = Depends(get_session),
 ):
     try:
-        config_service.add_member(session, name, is_excluded=is_excluded)
+        try:
+            joined = date.fromisoformat(start_date) if start_date else None
+        except ValueError:
+            raise ValidationError("invalid join date", field="start_date")
+        config_service.add_member(session, name, is_excluded=is_excluded, start_date=joined)
     except ValidationError as e:
         session.rollback()
         return _table(request, session, error=e.display())
@@ -62,6 +69,35 @@ def toggle(request: Request, member_id: int, session: Session = Depends(get_sess
 def delete(request: Request, member_id: int, session: Session = Depends(get_session)):
     try:
         config_service.remove_member(session, member_id)
+    except ValidationError as e:
+        session.rollback()
+        return _table(request, session, error=e.display())
+    return _table(request, session)
+
+
+@router.post("/members/{member_id}/depart", response_class=HTMLResponse)
+def depart(
+    request: Request,
+    member_id: int,
+    end_date: str = Form(""),
+    session: Session = Depends(get_session),
+):
+    try:
+        try:
+            when = date.fromisoformat(end_date) if end_date else date.today()
+        except ValueError:
+            raise ValidationError("invalid departure date", field="end_date")
+        config_service.depart_member(session, member_id, when)
+    except ValidationError as e:
+        session.rollback()
+        return _table(request, session, error=e.display())
+    return _table(request, session)
+
+
+@router.post("/members/{member_id}/rejoin", response_class=HTMLResponse)
+def rejoin(request: Request, member_id: int, session: Session = Depends(get_session)):
+    try:
+        config_service.rejoin_member(session, member_id)
     except ValidationError as e:
         session.rollback()
         return _table(request, session, error=e.display())
