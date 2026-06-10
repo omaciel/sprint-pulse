@@ -6,13 +6,14 @@ against the DB type tables (``services.type_service``).
 """
 from __future__ import annotations
 
+import dataclasses
 import re
 import warnings
 from datetime import date
 
 from sqlmodel import Session, select
 
-from sprint_pulse.config import Config
+from sprint_pulse.config import Config, in_tenure, tenure_overlaps
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.jira import JiraUnavailable
@@ -21,6 +22,7 @@ from sprint_pulse.sprints import (
     Event,
     Sprint,
     working_day_error,
+    working_days,
 )
 from sprint_pulse.sprints import slugify as _slug
 
@@ -101,6 +103,57 @@ def build_dashboard_data(
         }
         out.append((sp, metrics, row.jira_state))
     return out
+
+
+def _sprint_config(
+    cfg: Config, members: list[m.TeamMember], start: date, end: date
+) -> Config:
+    """Per-sprint Config: tenure-filtered roster/excluded + prorated capacity.
+
+    A member with no tenure dates contributes working_days_per_sprint exactly
+    as before this feature; a member whose tenure covers every working day of
+    the sprint contributes the same; a partial overlap contributes its
+    in-tenure working-day count.
+    """
+    present = [
+        mm for mm in members if tenure_overlaps((mm.start_date, mm.end_date), start, end)
+    ]
+    roster = [mm.name for mm in present]
+    excluded = {mm.name for mm in present if mm.is_excluded}
+    tenures = {
+        mm.name: (mm.start_date, mm.end_date)
+        for mm in present
+        if mm.start_date is not None or mm.end_date is not None
+    }
+    days = working_days(start, end)
+    n_days = len(days)
+    capacity = 0
+    for mm in present:
+        if mm.is_excluded:
+            continue
+        tenure = tenures.get(mm.name)
+        if tenure is None:
+            capacity += cfg.working_days_per_sprint
+            continue
+        in_days = sum(1 for d in days if in_tenure(tenure, d))
+        if in_days == n_days:  # covers the whole sprint -> classic contribution
+            capacity += cfg.working_days_per_sprint
+        else:
+            capacity += min(in_days, cfg.working_days_per_sprint)
+    return dataclasses.replace(
+        cfg, roster=roster, excluded=excluded, tenures=tenures, capacity_override=capacity
+    )
+
+
+def build_sprint_configs(session: Session, cfg: Config | None = None) -> dict[str, Config]:
+    """{sprint_id: per-sprint Config} for every sprint row (archived included)."""
+    if cfg is None:
+        cfg = config_service.build_config_from_db(session)
+    members = config_service.list_members(session)
+    return {
+        row.id: _sprint_config(cfg, members, row.start, row.end)
+        for row in session.exec(select(m.Sprint)).all()
+    }
 
 
 # --- Sprint CRUD ------------------------------------------------------------

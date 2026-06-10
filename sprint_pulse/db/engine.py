@@ -97,6 +97,10 @@ _ADDED_COLUMNS = {
         ("jira_sprint_id", "INTEGER"),
         ("label", "VARCHAR DEFAULT ''"),
     ],
+    "teammember": [
+        ("start_date", "DATE"),
+        ("end_date", "DATE"),
+    ],
 }
 
 

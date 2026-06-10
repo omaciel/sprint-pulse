@@ -1,15 +1,18 @@
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% set active_members = members | rejectattr("end_date") | list %}
+{% set former_members = members | selectattr("end_date") | list %}
 <table class="grid">
   <thead>
     <tr><th>Name</th><th>Role</th><th></th></tr>
   </thead>
   <tbody>
-    {% for member in members %}
+    {% for member in active_members %}
     <tr>
       <td><a class="link" href="/members/{{ member.id }}">{{ member.name }}</a></td>
       <td>
         {% if member.is_excluded %}<span class="pill excluded">Excluded</span>
         {% else %}<span class="muted">Capacity</span>{% endif %}
+        {% if member.start_date %}<span class="muted" style="font-size:12px"> · joined {{ member.start_date }}</span>{% endif %}
       </td>
       <td style="text-align:right; white-space:nowrap">
         <button class="secondary"
@@ -17,10 +20,44 @@
                 hx-target="#members-table" hx-swap="innerHTML">
           {% if member.is_excluded %}Include{% else %}Exclude{% endif %}
         </button>
+        <form style="display:inline-flex; gap:4px; align-items:center; margin:0"
+              hx-post="/members/{{ member.id }}/depart"
+              hx-target="#members-table" hx-swap="innerHTML"
+              hx-confirm="Mark {{ member.name }} as departed? They stay in past sprints; time off after the chosen date will be removed.">
+          <input type="date" name="end_date" value="{{ today }}" style="width:auto">
+          <button class="secondary">Departed</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="muted" style="margin-top:10px">
+  {{ active_members | length }} members · {{ active_members | selectattr("is_excluded") | list | length }} excluded from capacity
+</p>
+
+{% if former_members %}
+<h2 style="margin-top:24px">Former members</h2>
+<p class="muted" style="font-size:13px">Still shown in the sprints they were part of; not counted after their departure date.</p>
+<table class="grid">
+  <thead>
+    <tr><th>Name</th><th>Tenure</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for member in former_members %}
+    <tr>
+      <td><a class="link" href="/members/{{ member.id }}">{{ member.name }}</a></td>
+      <td><span class="muted">{% if member.start_date %}{{ member.start_date }} – {% else %}until {% endif %}{{ member.end_date }}</span></td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="secondary"
+                hx-post="/members/{{ member.id }}/rejoin"
+                hx-target="#members-table" hx-swap="innerHTML">
+          Rejoin
+        </button>
         <button class="danger"
                 hx-post="/members/{{ member.id }}/delete"
                 hx-target="#members-table" hx-swap="innerHTML"
-                hx-confirm="Remove {{ member.name }} and all their time off?">
+                hx-confirm="Permanently remove {{ member.name }} and ALL their history (time off, past sprint rows)? Use only for entries created by mistake.">
           Remove
         </button>
       </td>
@@ -28,6 +65,4 @@
     {% endfor %}
   </tbody>
 </table>
-<p class="muted" style="margin-top:10px">
-  {{ members | length }} members · {{ members | selectattr("is_excluded") | list | length }} excluded from capacity
-</p>
+{% endif %}

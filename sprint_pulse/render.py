@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from html import escape as _escape
 
-from sprint_pulse.config import Config
+from sprint_pulse.config import Config, in_tenure
 from sprint_pulse.sprints import Sprint, TimeOffEntry, working_days
 
 
@@ -119,6 +119,7 @@ tfoot td.zero { color: #d1d5db; }
 tfoot td.peak { background: #fef3c7; color: #92400e; }
 td.cell { font-weight: 600; font-size: 11px; }
 td.excluded { background: #e5e7eb; }
+td.inactive { background: #f3f4f6; }
 tr.excluded-row td.name { color: var(--muted); font-style: italic; }
 .excluded-badge { color: #9ca3af; font-size: 11px; font-weight: 400; margin-left: 4px; }
 td.release { background: #1f2937; color: #f9fafb; font-weight: 700; font-size: 11px; }
@@ -193,6 +194,8 @@ def _render_cell(
     abs_letter: dict,
     abs_title: dict,
 ) -> tuple[str, int]:
+    if not in_tenure(cfg.tenures.get(person), d):
+        return '<td class="inactive" title="Not on the team"></td>', 0
     if person in cfg.excluded:
         entries = by_person.get(person, {}).get(d, [])
         if entries:
@@ -410,8 +413,13 @@ def render_summary(
 def render_full_html(
     sprints_with_data: list[tuple[Sprint, dict, str]],
     cfg: Config,
+    cfg_by_sprint: dict[str, Config] | None = None,
 ) -> str:
-    """sprints_with_data: list of (sprint, jira_metrics, jira_state)."""
+    """sprints_with_data: list of (sprint, jira_metrics, jira_state).
+
+    ``cfg_by_sprint`` supplies per-sprint Config copies (tenure-filtered roster,
+    prorated capacity); sprints without an entry fall back to ``cfg``.
+    """
     sprints_asc = sorted(sprints_with_data, key=lambda t: (t[0].start, t[0].end, t[0].id))
     sprints_desc = list(reversed(sprints_asc))
 
@@ -421,7 +429,8 @@ def render_full_html(
     sprint_html_by_id: dict[str, str] = {}
     days_out_by_sprint: dict[str, dict[str, int]] = {}
     for sprint, metrics, state in sprints_asc:
-        html, dpo = render_sprint(sprint, cfg, metrics, state)
+        sprint_cfg = (cfg_by_sprint or {}).get(sprint.id, cfg)
+        html, dpo = render_sprint(sprint, sprint_cfg, metrics, state)
         html = html.replace(
             '<section class="sprint">',
             f'<section class="sprint" data-sprint="{sprint.id}" hidden>',

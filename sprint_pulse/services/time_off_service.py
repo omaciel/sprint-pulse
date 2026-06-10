@@ -13,6 +13,7 @@ from datetime import date
 
 from sqlmodel import Session, select
 
+from sprint_pulse.config import in_tenure
 from sprint_pulse.db import models as m
 from sprint_pulse.errors import ValidationError
 from sprint_pulse.sprints import TimeOffEntry, weekday_error
@@ -36,16 +37,22 @@ def set_days(session: Session, member_id: int, dates: Iterable[date], type_: str
     """Upsert one MemberDayOff per date (replacing type/notes if present)."""
     from sprint_pulse.services import type_service
 
-    _require_member(session, member_id)
+    member = _require_member(session, member_id)
     if type_ not in type_service.absence_type_keys(session):
         raise ValidationError(f'unknown absence type "{type_}"', field="type")
     dates = list(dates)
     if not dates:
         raise ValidationError("at least one day is required", field="days")
+    tenure = (member.start_date, member.end_date)
     for d in dates:
         err = weekday_error(d)
         if err:
             raise ValidationError(err, field="days")
+        if not in_tenure(tenure, d):
+            raise ValidationError(
+                f"{d.isoformat()} is outside {member.name}'s tenure on the team",
+                field="days",
+            )
     for d in dates:
         row = session.exec(
             select(m.MemberDayOff).where(

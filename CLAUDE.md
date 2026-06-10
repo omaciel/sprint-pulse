@@ -59,10 +59,17 @@ Two project-scoped skills live in `.claude/skills/` — invoke via the `Skill` t
   `[start, end]`, unknown associates fail with a Levenshtein suggestion.
 - The Jira API token is never stored in the DB — keyring (desktop) or `JIRA_API_TOKEN` env
   (container); the DB holds only a `token_ref`.
+- Members have optional tenure dates (`start_date`/`end_date`). A sprint shows and
+  counts only members whose tenure overlaps it, with capacity prorated for
+  mid-sprint joins/leaves. "Departed" (Team page) preserves history; hard delete
+  is only for mistaken entries.
 
 ## When asked about availability math
 
-Capacity = `(len(roster) − len(orchestration)) × working_days_per_sprint` person-days per
-sprint (values come from the DB Settings + roster).
+Capacity is computed **per sprint** from the members whose tenure overlaps it:
+each effective (non-orchestration) member contributes `working_days_per_sprint`
+when their tenure covers the whole sprint, else their in-tenure working-day
+count (mid-sprint join/departure prorates). With no tenure dates this reduces to
+the classic `(len(roster) − len(orchestration)) × working_days_per_sprint`.
 Days Out = sum of absent cells from the effective (non-orchestration) members.
 Availability = `(Capacity − Days Out) / Capacity × 100`, one decimal (n/a when capacity is 0).

@@ -108,8 +108,12 @@ Two ways on the **Sprints** page:
   while keeping it (it moves to an "Archived" section; one click to unarchive). This
   replaces the old `archive/` folder.
 - **Delete** permanently removes a sprint and its events/time off.
-- To stop counting someone, remove them on the Team page (their time-off entries are
-  cleaned up too).
+- When someone **leaves the team**, use **Departed** on the Team page (pick the
+  last day; defaults to today). They keep their rows in past sprints; time off
+  after the date is removed and they stop counting toward later capacity.
+  **Rejoin** (Former members section) reverses it. **Remove** is destructive and
+  only for entries created by mistake. New hires can get a **Joined on** date so
+  they don't appear in older sprints.
 
 ## Validation (enforced at the service layer)
 
