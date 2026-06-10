@@ -4,7 +4,7 @@ from datetime import date
 
 from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps, TypeDef
 from sprint_pulse.render import render_sprint
-from sprint_pulse.sprints import Sprint
+from sprint_pulse.sprints import Sprint, TimeOffEntry
 from sprint_pulse.types_defaults import DEFAULT_ABSENCE_TYPES, DEFAULT_EVENT_TYPES
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
@@ -290,3 +290,30 @@ def test_no_tenures_renders_no_inactive_cells():
     )
     html, _ = render_sprint(sprint, _render_cfg(), metrics=_METRICS, state="closed")
     assert 'class="inactive"' not in html
+
+
+def test_stale_time_off_outside_tenure_renders_inactive():
+    """A time-off row past the departure date (possible via YAML import, which
+    bypasses set_days validation) renders inert and adds nothing to days out."""
+    sprint = Sprint(
+        id="2026-22", label="2026-22",
+        start=date(2026, 5, 25), end=date(2026, 6, 7),
+        events=(),
+        time_off=(
+            TimeOffEntry(
+                associate="Bob Brown",
+                days=(date(2026, 6, 1),),  # after Bob's departure below
+                notes="stale import row",
+                type="pto",
+            ),
+        ),
+    )
+    cfg = _render_cfg(
+        tenures={"Bob Brown": (None, date(2026, 5, 27))},
+        capacity_override=13,
+    )
+    html, days_out = render_sprint(sprint, cfg, metrics=_METRICS, state="closed")
+    assert html.count('class="inactive"') == 7   # ordering: inactive beats the absence letter
+    assert "stale import row" not in html        # the entry is not rendered at all
+    assert days_out["Bob Brown"] == 0
+    assert "100.0%" in html                      # days out stayed 0 against capacity 13
