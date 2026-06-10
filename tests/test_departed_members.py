@@ -140,3 +140,16 @@ def test_rejoin_rejects_active_member(engine):
         member = cfgsvc.add_member(s, "Alice Anderson")
         with pytest.raises(ValidationError):
             cfgsvc.rejoin_member(s, member.id)
+
+
+def test_set_days_rejects_dates_outside_tenure(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "New Hire", start_date=date(2026, 6, 1))
+        mid = member.id
+        with pytest.raises(ValidationError, match="tenure"):
+            tosvc.set_days(s, mid, [date(2026, 5, 25)], "pto")  # before they joined
+    with session_scope(engine) as s:
+        cfgsvc.depart_member(s, mid, date(2026, 6, 5))
+        with pytest.raises(ValidationError, match="tenure"):
+            tosvc.set_days(s, mid, [date(2026, 6, 8)], "pto")  # after they left
+        tosvc.set_days(s, mid, [date(2026, 6, 3)], "pto")  # inside tenure: OK
