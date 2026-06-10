@@ -4,6 +4,9 @@
 {% block content %}
 <p><a class="link" href="/members">← Team</a></p>
 <h1>{{ member.name }}</h1>
+{% if member.end_date %}
+<p><span class="pill excluded">Former member — left {{ member.end_date }}</span></p>
+{% endif %}
 
 <div class="card">
   <div class="palette" id="palette">
