@@ -59,6 +59,10 @@ Two project-scoped skills live in `.claude/skills/` — invoke via the `Skill` t
   `[start, end]`, unknown associates fail with a Levenshtein suggestion.
 - The Jira API token is never stored in the DB — keyring (desktop) or `JIRA_API_TOKEN` env
   (container); the DB holds only a `token_ref`.
+- Members have optional tenure dates (`start_date`/`end_date`). A sprint shows and
+  counts only members whose tenure overlaps it, with capacity prorated for
+  mid-sprint joins/leaves. "Departed" (Team page) preserves history; hard delete
+  is only for mistaken entries.
 
 ## When asked about availability math
 
