@@ -95,8 +95,9 @@ def test_depart_member_sets_end_date_and_trims_future_time_off(engine):
     with session_scope(engine) as s:
         member = cfgsvc.add_member(s, "Alice Anderson")
         mid = member.id
-        # Mon 2026-05-25 (kept) and Mon 2026-06-01 (after departure, trimmed)
+        # Mon 2026-05-25 (kept), Fri 2026-05-29 (departure day, kept), and Mon 2026-06-01 (after departure, trimmed)
         tosvc.set_days(s, mid, [date(2026, 5, 25)], "pto")
+        tosvc.set_days(s, mid, [date(2026, 5, 29)], "pto")
         tosvc.set_days(s, mid, [date(2026, 6, 1)], "pto")
     with session_scope(engine) as s:
         cfgsvc.depart_member(s, mid, date(2026, 5, 29))
@@ -104,6 +105,7 @@ def test_depart_member_sets_end_date_and_trims_future_time_off(engine):
         assert cfgsvc.get_member(s, mid).end_date == date(2026, 5, 29)
         remaining = tosvc.member_calendar(s, mid, 2026, 5) | tosvc.member_calendar(s, mid, 2026, 6)
         assert date(2026, 5, 25) in remaining
+        assert date(2026, 5, 29) in remaining
         assert date(2026, 6, 1) not in remaining
 
 
@@ -112,6 +114,15 @@ def test_depart_member_rejects_end_before_start(engine):
         member = cfgsvc.add_member(s, "New Hire", start_date=date(2026, 6, 1))
         with pytest.raises(ValidationError):
             cfgsvc.depart_member(s, member.id, date(2026, 5, 1))
+
+
+def test_depart_member_rejects_already_departed(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "Alice Anderson")
+        mid = member.id
+        cfgsvc.depart_member(s, mid, date(2026, 5, 29))
+        with pytest.raises(ValidationError):
+            cfgsvc.depart_member(s, mid, date(2026, 6, 5))
 
 
 def test_rejoin_member_clears_end_date(engine):

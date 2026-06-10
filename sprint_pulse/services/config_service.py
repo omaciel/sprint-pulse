@@ -180,6 +180,12 @@ def depart_member(session: Session, member_id: int, end_date: date) -> m.TeamMem
     sprints keep rendering this member; use remove_member only for mistakes.
     """
     member = _get_member(session, member_id)
+    if member.end_date is not None:
+        raise ValidationError(
+            f"{member.name} is already departed ({member.end_date.isoformat()}); "
+            "rejoin them first to change the date",
+            field="end_date",
+        )
     if member.start_date is not None and end_date < member.start_date:
         raise ValidationError(
             f"departure ({end_date.isoformat()}) is before "
