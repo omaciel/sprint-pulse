@@ -49,6 +49,10 @@ class TeamMember(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     is_excluded: bool = False
     sort_order: int = 0
+    # Tenure: NULL start = member since before recorded history; NULL end =
+    # still on the team. Sprints show/count members whose tenure overlaps them.
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
 class NameAlias(SQLModel, table=True):
