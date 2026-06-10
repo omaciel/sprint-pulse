@@ -5,6 +5,8 @@ so all downstream code (capacity math, renderer) is reused unchanged.
 """
 from __future__ import annotations
 
+from datetime import date
+
 from sqlmodel import Session, select
 
 from sprint_pulse.config import Config, JiraConfig, TypeDef, normalize_site
@@ -128,7 +130,13 @@ def get_member(session: Session, member_id: int) -> m.TeamMember:
     return _get_member(session, member_id)
 
 
-def add_member(session: Session, name: str, *, is_excluded: bool = False) -> m.TeamMember:
+def add_member(
+    session: Session,
+    name: str,
+    *,
+    is_excluded: bool = False,
+    start_date: date | None = None,
+) -> m.TeamMember:
     name = (name or "").strip()
     if not name:
         raise ValidationError("name is required", field="name")
@@ -137,7 +145,9 @@ def add_member(session: Session, name: str, *, is_excluded: bool = False) -> m.T
     # max(sort_order)+1, not count: a prior removal would otherwise collide.
     existing = list_members(session)
     next_order = (max((member.sort_order for member in existing), default=-1)) + 1
-    member = m.TeamMember(name=name, is_excluded=is_excluded, sort_order=next_order)
+    member = m.TeamMember(
+        name=name, is_excluded=is_excluded, sort_order=next_order, start_date=start_date
+    )
     session.add(member)
     session.flush()
     return member
@@ -159,6 +169,39 @@ def rename_member(session: Session, member_id: int, new_name: str) -> m.TeamMemb
 def toggle_excluded(session: Session, member_id: int) -> m.TeamMember:
     member = _get_member(session, member_id)
     member.is_excluded = not member.is_excluded
+    session.add(member)
+    return member
+
+
+def depart_member(session: Session, member_id: int, end_date: date) -> m.TeamMember:
+    """Mark a member as departed: set end_date, drop time off past it.
+
+    History (time off up to and including end_date, aliases) is kept so past
+    sprints keep rendering this member; use remove_member only for mistakes.
+    """
+    member = _get_member(session, member_id)
+    if member.start_date is not None and end_date < member.start_date:
+        raise ValidationError(
+            f"departure ({end_date.isoformat()}) is before "
+            f"{member.name}'s start date ({member.start_date.isoformat()})",
+            field="end_date",
+        )
+    for row in session.exec(
+        select(m.MemberDayOff).where(
+            m.MemberDayOff.member_id == member_id, m.MemberDayOff.date > end_date
+        )
+    ).all():
+        session.delete(row)
+    member.end_date = end_date
+    session.add(member)
+    return member
+
+
+def rejoin_member(session: Session, member_id: int) -> m.TeamMember:
+    member = _get_member(session, member_id)
+    if member.end_date is None:
+        raise ValidationError(f"{member.name} has not departed", field="end_date")
+    member.end_date = None
     session.add(member)
     return member
 

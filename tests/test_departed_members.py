@@ -1,9 +1,13 @@
 """Departed-member feature: tenure columns, helpers, services, rendering."""
+import pytest
 from datetime import date
 
 from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
+from sprint_pulse.errors import ValidationError
+from sprint_pulse.services import config_service as cfgsvc
+from sprint_pulse.services import time_off_service as tosvc
 
 
 def test_teammember_has_tenure_fields():
@@ -71,3 +75,57 @@ def test_capacity_override():
     assert cfg.capacity == 20  # 2 members x 10 — unchanged default behavior
     assert _cfg(capacity_override=13).capacity == 13
     assert _cfg(capacity_override=0).capacity == 0  # 0 is a real value, not "unset"
+
+
+@pytest.fixture
+def engine():
+    eng = get_engine(":memory:")
+    create_db_and_tables(eng)
+    return eng
+
+
+def test_add_member_with_start_date(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "New Hire", start_date=date(2026, 6, 1))
+        assert member.start_date == date(2026, 6, 1)
+        assert member.end_date is None
+
+
+def test_depart_member_sets_end_date_and_trims_future_time_off(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "Alice Anderson")
+        mid = member.id
+        # Mon 2026-05-25 (kept) and Mon 2026-06-01 (after departure, trimmed)
+        tosvc.set_days(s, mid, [date(2026, 5, 25)], "pto")
+        tosvc.set_days(s, mid, [date(2026, 6, 1)], "pto")
+    with session_scope(engine) as s:
+        cfgsvc.depart_member(s, mid, date(2026, 5, 29))
+    with session_scope(engine) as s:
+        assert cfgsvc.get_member(s, mid).end_date == date(2026, 5, 29)
+        remaining = tosvc.member_calendar(s, mid, 2026, 5) | tosvc.member_calendar(s, mid, 2026, 6)
+        assert date(2026, 5, 25) in remaining
+        assert date(2026, 6, 1) not in remaining
+
+
+def test_depart_member_rejects_end_before_start(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "New Hire", start_date=date(2026, 6, 1))
+        with pytest.raises(ValidationError):
+            cfgsvc.depart_member(s, member.id, date(2026, 5, 1))
+
+
+def test_rejoin_member_clears_end_date(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "Alice Anderson")
+        mid = member.id
+        cfgsvc.depart_member(s, mid, date(2026, 5, 29))
+    with session_scope(engine) as s:
+        cfgsvc.rejoin_member(s, mid)
+        assert cfgsvc.get_member(s, mid).end_date is None
+
+
+def test_rejoin_rejects_active_member(engine):
+    with session_scope(engine) as s:
+        member = cfgsvc.add_member(s, "Alice Anderson")
+        with pytest.raises(ValidationError):
+            cfgsvc.rejoin_member(s, member.id)
