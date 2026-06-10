@@ -1,7 +1,8 @@
 """Config loader: data/config.yaml -> Config dataclass."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,26 @@ def normalize_site(site: str) -> str:
         s = s.split("://", 1)[1]
     s = s.split("/", 1)[0]  # drop any path
     return s.strip().rstrip("/")
+
+
+# A tenure is (start_date, end_date); None on either side means unbounded.
+Tenure = tuple[date | None, date | None]
+
+
+def in_tenure(tenure: Tenure | None, d: date) -> bool:
+    """True when day ``d`` falls inside the member's tenure (inclusive)."""
+    if tenure is None:
+        return True
+    start, end = tenure
+    return (start is None or start <= d) and (end is None or d <= end)
+
+
+def tenure_overlaps(tenure: Tenure | None, start: date, end: date) -> bool:
+    """True when the tenure overlaps the [start, end] window (inclusive)."""
+    if tenure is None:
+        return True
+    t_start, t_end = tenure
+    return (t_start is None or t_start <= end) and (t_end is None or t_end >= start)
 
 
 @dataclass(frozen=True)
@@ -58,6 +79,12 @@ class Config:
     # from the DB; the renderer derives CSS, cell letters, and the legend from these.
     event_types: tuple[TypeDef, ...] = ()
     absence_types: tuple[TypeDef, ...] = ()
+    # Per-member tenure, populated only for members that have tenure dates;
+    # absent key = full tenure. Drives out-of-tenure cell rendering.
+    tenures: dict[str, Tenure] = field(default_factory=dict)
+    # Per-sprint prorated capacity, set on the per-sprint Config copies built
+    # by sprint_service; None = derive from the roster as before.
+    capacity_override: int | None = None
 
     @property
     def effective(self) -> list[str]:
@@ -65,6 +92,8 @@ class Config:
 
     @property
     def capacity(self) -> int:
+        if self.capacity_override is not None:
+            return self.capacity_override
         return len(self.effective) * self.working_days_per_sprint
 
 

@@ -1,4 +1,7 @@
 """Departed-member feature: tenure columns, helpers, services, rendering."""
+from datetime import date
+
+from sprint_pulse.config import Config, JiraConfig, in_tenure, tenure_overlaps
 from sprint_pulse.db import models as m
 from sprint_pulse.db.engine import create_db_and_tables, get_engine, session_scope
 
@@ -28,3 +31,43 @@ def test_existing_db_gains_tenure_columns():
         alice = s.get(m.TeamMember, 1)
         assert alice.start_date is None
         assert alice.end_date is None
+
+
+def _cfg(**kw) -> Config:
+    base = dict(
+        working_days_per_sprint=10,
+        jira=JiraConfig(site="x", board="1"),
+        roster=["Alice Anderson", "Bob Brown"],
+        excluded=set(),
+        name_aliases={},
+    )
+    base.update(kw)
+    return Config(**base)
+
+
+def test_in_tenure_all_combinations():
+    d = date(2026, 5, 15)
+    assert in_tenure(None, d)                                   # no tenure recorded
+    assert in_tenure((None, None), d)
+    assert in_tenure((date(2026, 5, 1), None), d)
+    assert not in_tenure((date(2026, 6, 1), None), d)           # joins later
+    assert in_tenure((None, date(2026, 5, 15)), d)              # leaves that day (inclusive)
+    assert not in_tenure((None, date(2026, 5, 14)), d)          # already left
+    assert in_tenure((date(2026, 5, 15), date(2026, 5, 15)), d)
+
+
+def test_tenure_overlaps_sprint_window():
+    s, e = date(2026, 5, 4), date(2026, 5, 17)
+    assert tenure_overlaps(None, s, e)
+    assert tenure_overlaps((None, None), s, e)
+    assert tenure_overlaps((None, date(2026, 5, 4)), s, e)      # leaves on sprint start
+    assert not tenure_overlaps((None, date(2026, 5, 3)), s, e)  # left before
+    assert tenure_overlaps((date(2026, 5, 17), None), s, e)     # joins on sprint end
+    assert not tenure_overlaps((date(2026, 5, 18), None), s, e) # joins after
+
+
+def test_capacity_override():
+    cfg = _cfg()
+    assert cfg.capacity == 20  # 2 members x 10 — unchanged default behavior
+    assert _cfg(capacity_override=13).capacity == 13
+    assert _cfg(capacity_override=0).capacity == 0  # 0 is a real value, not "unset"
