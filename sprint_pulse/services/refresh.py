@@ -17,7 +17,9 @@ from sprint_pulse.services import config_service, jira_service
 
 def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
     """Update cached Jira metrics for every sprint. Records last-run status on
-    Settings. Returns a small summary dict."""
+    Settings. Archived sprints and sprints already cached as closed are skipped
+    (their final numbers are kept); only future/active sprints are synced.
+    Returns a small summary dict."""
     now = now or datetime.now()
     settings = config_service.get_settings(session)
 
@@ -43,8 +45,16 @@ def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
     rows = list(session.exec(select(m.Sprint)).all())
     updated = 0
     matched = 0
+    skipped = 0
     metric_failures = 0
     for row in rows:
+        # Archived sprints are off the dashboard and closed sprints have final
+        # numbers — skip both (before any Jira call) so we don't re-fetch
+        # unchanging data every run. "closed" is judged from our cached state:
+        # the run that first sees a sprint close still captures it once.
+        if row.archived or row.jira_state == "closed":
+            skipped += 1
+            continue
         # Prefer the stored Jira numeric id; fall back to the "{team} {id}" name
         # for sprints imported before that was tracked (e.g. YAML-migrated).
         info = None
@@ -71,18 +81,28 @@ def refresh_all(session: Session, *, now: datetime | None = None) -> dict:
         updated += 1
         session.add(row)
 
+    eligible = len(rows) - skipped
     settings.last_run = now
-    if rows and matched == 0:
+    if eligible == 0:
+        settings.last_status = "ok"
+        if skipped:
+            settings.last_log = (
+                f"No active sprints to sync ({skipped} closed/archived skipped)."
+            )
+        else:
+            settings.last_log = "No sprints to sync."
+    elif matched == 0:
         settings.last_status = "ok"
         settings.last_log = "No matching Jira sprints — nothing to update."
     elif metric_failures:
         settings.last_status = "error"
         settings.last_log = (
-            f"Updated {updated}/{len(rows)} sprints; "
+            f"Updated {updated}/{eligible} sprints; "
             f"{metric_failures} metric fetch(es) failed (stale numbers kept)."
         )
     else:
         settings.last_status = "ok"
-        settings.last_log = f"Updated {updated}/{len(rows)} sprints."
+        skip_note = f" ({skipped} closed/archived skipped)" if skipped else ""
+        settings.last_log = f"Updated {updated}/{eligible} sprints{skip_note}."
     session.add(settings)
     return {"status": settings.last_status, "updated": updated, "log": settings.last_log}
