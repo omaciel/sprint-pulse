@@ -101,3 +101,77 @@ def test_reschedule_persists_settings(engine):
 def test_reschedule_rejects_bad_value(engine):
     with pytest.raises(ValidationError):
         SchedulerManager(engine).reschedule(enabled=True, trigger="interval", value="zero")
+
+
+# --- skip closed/archived during refresh ------------------------------------
+
+class RecordingClient:
+    """Fake Jira client that records which sprint ids it fetched metrics for."""
+
+    def __init__(self):
+        self.fetched: list[int] = []
+
+    def fetch_sprints(self):
+        return {
+            "My Team 2026-16": {"id": 100, "state": "active"},
+            "My Team 2026-18": {"id": 101, "state": "closed"},
+        }
+
+    def fetch_metrics(self, sprint_id):
+        self.fetched.append(sprint_id)
+        return {"done_n": 5, "tot_n": 68, "done_sp": 11, "tot_sp": 153}
+
+
+def test_refresh_skips_closed_sprint(engine, monkeypatch):
+    client = RecordingClient()
+    monkeypatch.setattr(jira_service, "make_client", lambda s: client)
+    with session_scope(engine) as s:
+        row = s.get(m.Sprint, "2026-18")
+        row.jira_state = "closed"
+        row.done_n = 99  # sentinel that must survive the refresh
+        s.add(row)
+    result = SchedulerManager(engine).run_now()
+    assert 101 not in client.fetched          # closed sprint never fetched
+    assert 100 in client.fetched              # active sprint still fetched
+    assert result["status"] == "ok"
+    with session_scope(engine) as s:
+        assert s.get(m.Sprint, "2026-18").done_n == 99  # cached numbers kept
+
+
+def test_refresh_skips_archived_sprint(engine, monkeypatch):
+    client = RecordingClient()
+    monkeypatch.setattr(jira_service, "make_client", lambda s: client)
+    with session_scope(engine) as s:
+        row = s.get(m.Sprint, "2026-16")
+        row.archived = True
+        s.add(row)
+    SchedulerManager(engine).run_now()
+    assert 100 not in client.fetched          # archived sprint never fetched
+
+
+def test_refresh_all_skipped_reports_ok(engine, monkeypatch):
+    client = RecordingClient()
+    monkeypatch.setattr(jira_service, "make_client", lambda s: client)
+    with session_scope(engine) as s:
+        c = s.get(m.Sprint, "2026-16")
+        c.jira_state = "closed"
+        s.add(c)
+        a = s.get(m.Sprint, "2026-18")
+        a.archived = True
+        s.add(a)
+    result = SchedulerManager(engine).run_now()
+    assert result["status"] == "ok"
+    assert client.fetched == []               # zero Jira metric calls
+    assert "skipped" in result["log"]
+
+
+def test_refresh_log_mentions_skipped_count(engine, monkeypatch):
+    client = RecordingClient()
+    monkeypatch.setattr(jira_service, "make_client", lambda s: client)
+    with session_scope(engine) as s:
+        row = s.get(m.Sprint, "2026-18")
+        row.jira_state = "closed"
+        s.add(row)
+    result = SchedulerManager(engine).run_now()
+    assert result["updated"] == 1             # only 2026-16 updated
+    assert "1 closed/archived skipped" in result["log"]

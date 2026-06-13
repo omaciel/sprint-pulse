@@ -34,8 +34,11 @@ The scheduler runs the same pipeline (`sprint_pulse/services/refresh.py`): for e
 sprint it resolves a Jira sprint by the stored Jira id (set on import) first, then
 falls back to a `{team_name} {label}` name match; on a hit it fetches state + metrics
 and writes `done_n`, `tot_n`, `done_sp`, `tot_sp`, and `jira_state` onto the sprint
-row. Sprints that resolve to nothing are skipped silently, and "no matching sprints"
-is reported as `ok` (nothing to update) — not an error. Jira is optional.
+row. Archived sprints and sprints already cached as **closed** are skipped before any
+Jira call (their final numbers are kept), so only future/active sprints are re-fetched
+— the same for manual *Refresh metrics now* and scheduled runs. Sprints that resolve to
+nothing are skipped silently, and "no matching sprints" is reported as `ok` (nothing to
+update) — not an error. Jira is optional.
 
 ## Prerequisites
 

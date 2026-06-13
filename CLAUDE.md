@@ -54,7 +54,9 @@ Two project-scoped skills live in `.claude/skills/` — invoke via the `Skill` t
 - Release events use a closed-vocabulary `kind` (`tags`/`gono`/`ga`/`freeze`/`test`); sprint
   header bullets derive from event titles.
 - Jira sprint state (closed/active/future) and metrics are fetched by the refresh pipeline
-  and cached on the sprint row; the dashboard renders from that cache.
+  and cached on the sprint row; the dashboard renders from that cache. The refresh skips
+  archived sprints and sprints already cached as closed (their final numbers are kept), so
+  only future/active sprints are re-fetched — manual and scheduled runs alike.
 - Validation (service layer) is strict: unique sprint ids, dates must be working days inside
   `[start, end]`, unknown associates fail with a Levenshtein suggestion.
 - The Jira API token is never stored in the DB — keyring (desktop) or `JIRA_API_TOKEN` env
