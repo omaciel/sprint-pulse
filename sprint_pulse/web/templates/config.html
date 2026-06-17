@@ -45,11 +45,13 @@
            placeholder="you@example.com">
     <label for="token">API token</label>
     <input type="password" id="token" name="jira_token" autocomplete="off"
+           {% if settings.token_ref == 'env' %}disabled{% endif %}
            placeholder="{% if settings.token_ref == 'env' %}set via JIRA_API_TOKEN env var{% else %}leave blank to keep current{% endif %}">
     <p class="muted" style="margin-top:8px">
       Token store: <strong>{{ settings.token_ref }}</strong> —
       {% if settings.token_ref == 'env' %}
-        read from the <code>JIRA_API_TOKEN</code> environment variable (container mode).
+        read from the <code>JIRA_API_TOKEN</code> environment variable. Edit that
+        variable (and restart) to change it — this field is ignored while it's set.
       {% else %}
         saved in your OS keychain, never in the database.
       {% endif %}
