@@ -1,5 +1,7 @@
 """FastAPI route tests (TestClient over an in-memory DB)."""
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -144,6 +146,38 @@ def test_config_save_roundtrip(seeded_client):
     page = seeded_client.get("/config")
     assert "999" in page.text
     assert "me@x.com" in page.text
+
+
+def _token_input(html: str) -> str:
+    """The rendered <input id="token"> tag, isolated for attribute assertions."""
+    match = re.search(r'<input\b[^>]*\bid="token"[^>]*>', html)
+    assert match, "config page is missing the token input"
+    return match.group(0)
+
+
+def test_config_token_field_disabled_in_env_mode(empty_client):
+    """When the token comes from JIRA_API_TOKEN, the field must be disabled so a
+    user can't silently 'save' a value the env backend ignores (the original trap)."""
+    from sprint_pulse.db.engine import session_scope
+    from sprint_pulse.services import config_service as cfgsvc
+
+    with session_scope(empty_client.app.state.engine) as s:
+        cfgsvc.update_settings(s, token_ref="env")
+
+    token_input = _token_input(empty_client.get("/config").text)
+    assert "disabled" in token_input
+
+
+def test_config_token_field_editable_in_keyring_mode(empty_client):
+    """The keyring backend is writable, so the token field stays editable there."""
+    from sprint_pulse.db.engine import session_scope
+    from sprint_pulse.services import config_service as cfgsvc
+
+    with session_scope(empty_client.app.state.engine) as s:
+        cfgsvc.update_settings(s, token_ref="keyring")
+
+    token_input = _token_input(empty_client.get("/config").text)
+    assert "disabled" not in token_input
 
 
 def test_scheduler_page_shows_busy_affordances(empty_client):
