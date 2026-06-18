@@ -91,17 +91,23 @@ deleted.
 
 ## Setup
 
-`uv sync` creates the `.venv` and installs dependencies from the lockfile:
+**No manual install step needed.** Any `make` target that runs the app or
+tests creates the `.venv` and syncs dependencies on demand (via `uv`), so you
+can jump straight to `make demo`. The sync re-runs only when `pyproject.toml`
+or `uv.lock` change. You just need [uv](https://docs.astral.sh/uv/) on your
+`PATH` — the Makefile points you to its installer if it's missing.
+
+To populate the environment up front (e.g. before going offline):
 
 ```bash
-uv sync --extra desktop   # runtime + desktop + dev deps (use `make install-dev`)
+make install        # runtime + desktop deps
+make install-dev    # runtime + desktop + test/lint tooling
+# …or directly:  uv sync --extra desktop
 ```
 
-> The `make` targets **auto-detect `.venv/`** — if it exists they use
-> `.venv/bin/python` automatically, so you don't have to activate it. Override
-> with `make <target> PYTHON=/path/to/python` if you keep the venv elsewhere.
-> `make install` installs runtime + desktop only; `make install-dev` adds the
-> test/lint tooling.
+> `make` targets use `.venv/bin/python` automatically — no activation needed.
+> Override with `make <target> PYTHON=/path/to/python` if you keep the venv
+> elsewhere.
 
 ## Ways to run
 
@@ -120,6 +126,7 @@ lives*). The Jira token is stored in your OS keychain.
 make dev                      # http://localhost:8765  (auto-reloads on edits)
 ```
 
+Your browser opens automatically once the server is accepting connections.
 Change the port with `PORT=9000 make dev`.
 
 ### 3. Containerized web app (browser)
@@ -158,9 +165,11 @@ make demo            # browser at http://localhost:8765  (fresh throwaway DB)
 make demo-desktop    # same, in the native window
 ```
 
-This starts a fresh `.demo.db`, points the wizard's YAML import at `examples/`,
-and sets `SPRINT_PULSE_DEMO=1` so the Jira features use canned data instead of a
-real instance. From the wizard you can:
+On a fresh checkout this is all you need: `make demo` installs dependencies if
+needed, starts a fresh `.demo.db`, points the wizard's YAML import at
+`examples/`, sets `SPRINT_PULSE_DEMO=1` so the Jira features use canned data
+instead of a real instance, and opens your browser once the server is ready.
+From the wizard you can:
 
 - **Import manually** — "Import from YAML" loads the example team + sprints.
 - **Import automatically** — "Import from Jira" lists mock board sprints to pick
