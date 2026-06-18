@@ -30,7 +30,9 @@ from sprint_pulse.web.app import create_app
     "ACME.ATLASSIAN.NET",
 ])
 def test_validate_site_allows_atlassian_cloud(site):
-    assert validate_site(site).lower().endswith("atlassian.net")
+    # Assert the dotted suffix: a bare "atlassian.net" check would also accept a
+    # look-alike like "evilatlassian.net", which the allowlist must reject.
+    assert validate_site(site).lower().endswith(".atlassian.net")
 
 
 @pytest.mark.parametrize("site", [

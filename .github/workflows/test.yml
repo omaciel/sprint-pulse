@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# Least privilege: the job only checks out code and runs tests.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

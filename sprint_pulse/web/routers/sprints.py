@@ -201,13 +201,15 @@ def set_dates(
     session: Session = Depends(get_session),
 ):
     try:
-        sprint_service.set_sprint_dates(session, sprint_id, start, end)
+        sprint = sprint_service.set_sprint_dates(session, sprint_id, start, end)
     except ValidationError as e:
         session.rollback()
         return templates.TemplateResponse(
             request, "sprint_detail.html", _detail_context(session, sprint_id, date_error=e.display())
         )
-    return RedirectResponse(f"/sprints/{sprint_id}", status_code=303)
+    # Redirect to the persisted sprint id (a trusted, DB-sourced value), never the
+    # raw path parameter, so the Location can't be steered by user-supplied input.
+    return RedirectResponse(f"/sprints/{sprint.id}", status_code=303)
 
 
 @router.post("/sprints/{sprint_id}/events", response_class=HTMLResponse)
