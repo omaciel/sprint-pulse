@@ -5,13 +5,13 @@ description = "Team availability dashboard — FastAPI + SQLite, desktop and con
 requires-python = ">=3.13"
 dependencies = [
     "PyYAML>=6.0",
-    "fastapi>=0.139.2",
+    "fastapi>=0.140.7",
     "uvicorn[standard]>=0.51.0",
     "sqlmodel>=0.0.39",
     "jinja2>=3.1",
     "python-multipart>=0.0.32",
     "apscheduler>=3.11.3",
-    "certifi>=2026.6.17",
+    "certifi>=2026.7.22",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +28,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-snapshot>=0.9.0",
     "httpx>=0.27",
-    "ruff>=0.15.22",
+    "ruff>=0.16.0",
 ]
 
 [tool.uv]
@@ -36,6 +36,14 @@ dev = [
 # container COPYs the source dir directly — it is never pip-installed. uv installs
 # only dependencies into .venv; no build backend required.
 package = false
+
+[tool.ruff.lint]
+# Pin the rule set explicitly rather than inheriting ruff's defaults, which are
+# not stable across releases: 0.15 enabled 151 rules by default, 0.16 enables 859.
+# Without this, every ruff bump silently redefines what "lint passes" means.
+# These four groups reproduce the 0.15 default set (pyflakes + the pycodestyle
+# error subset). Widen deliberately, not by upgrading.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
