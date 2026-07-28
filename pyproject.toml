@@ -37,6 +37,14 @@ dev = [
 # only dependencies into .venv; no build backend required.
 package = false
 
+[tool.ruff.lint]
+# Pin the rule set explicitly rather than inheriting ruff's defaults, which are
+# not stable across releases: 0.15 enabled 151 rules by default, 0.16 enables 859.
+# Without this, every ruff bump silently redefines what "lint passes" means.
+# These four groups reproduce the 0.15 default set (pyflakes + the pycodestyle
+# error subset). Widen deliberately, not by upgrading.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
