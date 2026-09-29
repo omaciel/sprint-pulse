@@ -14,9 +14,10 @@ deletes are handled in the service layer (delete children before parents).
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from typing import ClassVar, Optional
 
+from pydantic import NaiveDatetime
 from sqlalchemy import Index, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
@@ -39,7 +40,8 @@ class Settings(SQLModel, table=True):
     scheduler_enabled: bool = False
     scheduler_trigger: str = "interval"  # "interval" | "cron"
     scheduler_value: str = "60"  # minutes for interval, cron expr for cron
-    last_run: Optional[datetime] = None
+    # Naive local time (rendered as-is); sqlmodel >= 0.0.47 requires opting in.
+    last_run: Optional[NaiveDatetime] = None
     last_status: str = ""  # "ok" | "error" | ""
     last_log: str = ""
 
@@ -81,7 +83,7 @@ class Sprint(SQLModel, table=True):
     tot_n: int = 0
     done_sp: int = 0
     tot_sp: int = 0
-    last_refreshed: Optional[datetime] = None
+    last_refreshed: Optional[NaiveDatetime] = None
 
 
 class Event(SQLModel, table=True):
